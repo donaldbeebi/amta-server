@@ -1,0 +1,74 @@
+{
+    "sections": [
+        {
+            "identifier": "rhythm",
+            "descriptions": [],
+            "groups": [
+                { "identifier": "time_signature" },
+                { "identifier": "simple_compound" },
+                { "identifier": "rhythm" },
+                { "identifier": "note_grouping" },
+                { "identifier": "rests" }
+            ]
+        },
+        {
+            "identifier": "pitch",
+            "descriptions": [],
+            "groups": [
+                { "identifier": "note_naming" },
+                { "identifier": "enharmonic_equivalent" },
+                { "identifier": "transposition" },
+                { "identifier": "clef_comparison" }
+            ]
+        },
+        {
+            "identifier": "keys_and_scales",
+            "descriptions": [],
+            "groups": [
+                { "identifier": "key_signature" },
+                { "identifier": "melody_key" },
+                { "identifier": "scale_note" },
+                { "identifier": "scale_clef" },
+                { "identifier": "chromatic_scale" },
+                { "identifier": "technical_name" }
+            ]
+        },
+        {
+            "identifier": "intervals",
+            "descriptions": [],
+            "groups": [
+                { "identifier": "interval_naming" },
+                { "identifier": "interval_quality" },
+                { "identifier": "interval_drawing" }
+            ]
+        },
+        {
+            "identifier": "chords",
+            "descriptions": [],
+            "groups": [
+                { "identifier": "cadence_chord" },
+                { "identifier": "cadence_naming" },
+                { "identifier": "chord_naming" }
+            ]
+        },
+        {
+            "identifier": "terms_signs_and_instruments",
+            "descriptions": [],
+            "groups": [
+                { "identifier": "instrument_fact" },
+                { "identifier": "musical_term" },
+                { "identifier": "ornament_naming" }
+            ]
+        },
+        {
+            "identifier": "music_in_context",
+            "descriptions": [
+                { "type": "text", "content": "section_7_desc" },
+                { "type": "image", "content": "q_section_7_score_#" }
+            ],
+            "groups": [
+                { "identifier": "octave_comparison" }
+            ]
+        }
+    ]
+}
