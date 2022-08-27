@@ -3,20 +3,20 @@ package com.donald.abrsmappserver.question
 import org.json.JSONArray
 import org.json.JSONObject
 
-class QuestionGroup(
+class Group(
     val number: Int,
     val name: String,
-    val descriptions: List<Description>,
-    val questions: List<Question>
-) : Iterable<Question> {
+    val descriptions: List<Description> = emptyList(),
+    val parentQuestions: List<ParentQuestion>
+) : Iterable<ParentQuestion> {
 
     val points: Int
-        get() = questions.sumOf { it.points }
+        get() = parentQuestions.sumOf { it.points }
     val maxPoints: Int
-        get() = questions.sumOf { it.maxPoints }
+        get() = parentQuestions.sumOf { it.maxPoints }
 
-    operator fun contains(question: Question): Boolean {
-        return questions.any { it === question }
+    operator fun contains(question: ParentQuestion): Boolean {
+        return parentQuestions.any { it === question }
     }
 
     fun registerImages(imageArray: JSONArray) {
@@ -25,7 +25,7 @@ class QuestionGroup(
                 imageArray.put(description.content)
             }
         }
-        questions.forEach { question ->
+        parentQuestions.forEach { question ->
             question.registerImages(imageArray)
         }
     }
@@ -36,7 +36,7 @@ class QuestionGroup(
                 stringArray.put(description.content)
             }
         }
-        questions.forEach { question ->
+        parentQuestions.forEach { question ->
             question.registerStrings(stringArray)
         }
     }
@@ -57,13 +57,13 @@ class QuestionGroup(
 
         // 4. questions
         currentArray = JSONArray()
-        for (question in questions) currentArray.put(question.toJson())
-        jsonObject.put("questions", currentArray)
+        for (question in parentQuestions) currentArray.put(question.toJson())
+        jsonObject.put("parent_questions", currentArray)
         return jsonObject
     }
 
-    override fun iterator(): Iterator<Question> {
-        return questions.iterator()
+    override fun iterator(): Iterator<ParentQuestion> {
+        return parentQuestions.iterator()
     }
 
 }
