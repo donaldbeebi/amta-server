@@ -8,7 +8,7 @@ import java.util.*
 
 class Context(
     val bundle: ResourceBundle,
-    val sectionVariation: Int
+    //val sectionVariation: Int
 ) {
 
     fun getString(key: String, vararg args: Any?): String {

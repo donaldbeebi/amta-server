@@ -7,12 +7,12 @@ import org.json.JSONObject
 
 class IntervalInputQuestion(
     number: Int,
-    descriptions: List<Description>,
+    descriptions: List<Description> = emptyList(),
     inputHint: String? = null,
     val score: Score,
     val requiredInterval: String,
     val answer: Answer
-) : Question(number, descriptions, inputHint) {
+) : ChildQuestion(number, descriptions, inputHint) {
 
     override val points: Int
         get() = if (answer.correct) 1 else 0
@@ -32,7 +32,7 @@ class IntervalInputQuestion(
         return jsonObject
     }
 
-    class Answer(var userAnswer: Note?, val correctAnswer: Note) : Question.Answer {
+    class Answer(var userAnswer: Note?, val correctAnswer: Note) : ChildQuestion.Answer {
 
         override val correct: Boolean
             get() = userAnswer?.pitch()?.equals(correctAnswer.pitch()) ?: false

@@ -27,7 +27,7 @@ public enum TechnicalName
 		if(degree < 0 || degree > 6)
 			throw new IllegalArgumentException(degree + " is not a valid degree.");
 
-		if(degree == 6 && mode != Mode.N_MINOR)
+		if(degree == 6 && mode != Mode.NatMinor)
 		{
 			return values()[degree + 1];
 		}

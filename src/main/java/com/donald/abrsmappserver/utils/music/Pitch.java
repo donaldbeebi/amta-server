@@ -123,8 +123,8 @@ public abstract class Pitch
     {
         int relativeId = Music.relIdFromAbsId(id);
         int octave = Music.octaveFromId(id);
-        relativeId = relativeId % Music.PITCHES_PER_OCT +
-            Letter.NO_OF_LETTERS * newAlter;
+        relativeId = relativeId % Music.FIFTH_TABLE_COLUMN_COUNT +
+            Letter.NO_OF_LETTERS * (newAlter + 2);
         id = relativeId + octave * Music.PITCHES_PER_OCT;
     }
 

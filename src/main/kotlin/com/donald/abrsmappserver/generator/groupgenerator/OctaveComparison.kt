@@ -1,34 +1,42 @@
 package com.donald.abrsmappserver.generator.groupgenerator
 
 import com.donald.abrsmappserver.exercise.Context
+import com.donald.abrsmappserver.generator.groupgenerator.abstractgroupgenerator.Section7GroupGenerator
 import com.donald.abrsmappserver.question.Description
 import com.donald.abrsmappserver.question.MultipleChoiceQuestion
+import com.donald.abrsmappserver.question.ParentQuestion
 import com.donald.abrsmappserver.question.QuestionGroup
 import com.donald.abrsmappserver.utils.RandomIntegerGenerator.randomInt
 import com.donald.abrsmappserver.utils.getIntOrNull
-import com.donald.abrsmappserver.utils.music.toAlphabetUpper
+import com.donald.abrsmappserver.utils.music.toAlphabetUpperFromZero
 import java.sql.Connection
 import java.util.*
 
-private const val NO_OF_OPTIONS = 4
-private const val NO_OF_QUESTIONS = 1
+private const val OPTION_COUNT = 4
+private const val PARENT_QUESTION_COUNT = 1
+private const val CHILD_QUESTION_COUNT = 1
 
-class OctaveComparison(database: Connection) : GroupGenerator("octave_comparison", database) {
+class OctaveComparison(database: Connection) : Section7GroupGenerator(
+    "octave_comparison",
+    testParentQuestionCount = PARENT_QUESTION_COUNT,
+    maxParentQuestionCount = PARENT_QUESTION_COUNT,
+    database
+) {
 
     private val random = Random()
 
-    override fun generateGroup(groupNumber: Int, context: Context): QuestionGroup {
+    override fun generateGroup(sectionVariation: Int, sectionGroupNumber: Int, parentQuestionCount: Int, context: Context): QuestionGroup {
         val result = database.prepareStatement("""
             SELECT octave_comparison_1, combination_1, combination_2, octave_comparison_2, bar
             FROM questions_octave_comparison
             WHERE variation = ?
             ORDER BY RANDOM() LIMIT ?;
         """.trimIndent()).apply {
-            setInt(1, context.sectionVariation)
-            setInt(2, NO_OF_QUESTIONS)
+            setInt(1, sectionVariation)
+            setInt(2, parentQuestionCount)
         }.executeQuery()
 
-        val questions = List(NO_OF_QUESTIONS) { questionIndex ->
+        val questions = List(parentQuestionCount) { parentIndex ->
             result.next()
             val comparison: OctaveComparison
             val combination: Combination
@@ -48,11 +56,11 @@ class OctaveComparison(database: Connection) : GroupGenerator("octave_comparison
                 }
             }
 
-            val wrongComparisons = ArrayList<OctaveComparison>(NO_OF_OPTIONS - 1)
-            val wrongCombinations = ArrayList<Combination>(NO_OF_OPTIONS - 1)
+            val wrongComparisons = ArrayList<OctaveComparison>(OPTION_COUNT - 1)
+            val wrongCombinations = ArrayList<Combination>(OPTION_COUNT - 1)
 
             randomInt(
-                count = NO_OF_OPTIONS - 1,
+                count = OPTION_COUNT - 1,
                 range = 0 until OctaveComparison.comparisons.size,
                 excluded = intArrayOf(comparison.ordinal)
             ) { int ->
@@ -60,23 +68,23 @@ class OctaveComparison(database: Connection) : GroupGenerator("octave_comparison
             }
 
             randomInt(
-                count = NO_OF_OPTIONS - 1,
+                count = OPTION_COUNT - 1,
                 range = 0 until Combination.combinations.size,
                 excluded = intArrayOf(combination.ordinal)
             ) { int ->
                 wrongCombinations += Combination.combinations[int]
             }
 
-            val descriptions = ArrayList<Description>(1 + 3 * 2 + NO_OF_OPTIONS * 2)
+            val descriptions = ArrayList<Description>(1 + 3 * 2 + OPTION_COUNT * 2)
             descriptions += Description(Description.Type.Text, context.getString("octave_comparison_question_desc", result.getString("bar")))
             repeat(3) { index ->
-                descriptions += Description(Description.Type.Text, context.getString("octave_comparison_bar", index.toAlphabetUpper()))
-                descriptions += Description(Description.Type.Image, "q_octave_comparison_${context.sectionVariation}_${(index).toAlphabetUpper()}")
+                descriptions += Description(Description.Type.Text, context.getString("octave_comparison_bar", index.toAlphabetUpperFromZero()))
+                descriptions += Description(Description.Type.Image, "q_octave_comparison_${sectionVariation}_${(index).toAlphabetUpperFromZero()}")
             }
 
-            val statements = ArrayList<String>(NO_OF_OPTIONS)
+            val statements = ArrayList<String>(OPTION_COUNT)
             statements += combination.toString(context.bundle) + " " + comparison.toString(context.bundle)
-            repeat(NO_OF_OPTIONS - 1) { index ->
+            repeat(OPTION_COUNT - 1) { index ->
                 statements += wrongCombinations[index].toString(context.bundle) + " " + wrongComparisons[index].toString(context.bundle)
             }
             val dispositions = statements.shuffle()
@@ -87,22 +95,27 @@ class OctaveComparison(database: Connection) : GroupGenerator("octave_comparison
 
             // descriptions += Description(Description.Type.Text, dispositions[0].toString())
 
-            val options = List(NO_OF_OPTIONS) { index -> (index + 1).toString() }
+            val options = List(OPTION_COUNT) { index -> (index + 1).toString() }
 
-            MultipleChoiceQuestion(
-                number = questionIndex + 1,
+            ParentQuestion(
+                number = parentIndex + 1,
                 descriptions = descriptions,
-                options = options,
-                optionType = MultipleChoiceQuestion.OptionType.Text,
-                answer = MultipleChoiceQuestion.Answer(null, dispositions[0])
+                childQuestions = List(CHILD_QUESTION_COUNT) { childIndex ->
+                    MultipleChoiceQuestion(
+                        number = childIndex + 1,
+                        options = options,
+                        optionType = MultipleChoiceQuestion.OptionType.Text,
+                        answer = MultipleChoiceQuestion.Answer(null, dispositions[0])
+                    )
+                }
             )
         }
 
         return QuestionGroup(
-            number = groupNumber,
+            number = sectionGroupNumber,
             name = getGroupName(context.bundle),
             descriptions = emptyList(),
-            questions = questions
+            parentQuestions = questions
         )
     }
 

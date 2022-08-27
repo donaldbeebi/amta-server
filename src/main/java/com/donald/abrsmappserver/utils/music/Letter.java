@@ -43,7 +43,7 @@ public enum Letter
 
     public static Letter fromAbsoluteStep(int absoluteStep)
     {
-        return valuesBySteps()[absoluteStep % NO_OF_LETTERS];
+        return valuesBySteps()[Math.floorMod(absoluteStep, NO_OF_LETTERS)];
     }
 
     public static Letter fromString(String letterName)

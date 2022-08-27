@@ -1,19 +1,37 @@
 package com.donald.abrsmappserver.generator.groupgenerator
 
 import com.donald.abrsmappserver.exercise.Context
+import com.donald.abrsmappserver.generator.groupgenerator.abstractgroupgenerator.GroupGenerator
 import com.donald.abrsmappserver.question.QuestionGroup
 import com.donald.abrsmappserver.question.MultipleChoiceQuestion
 import com.donald.abrsmappserver.question.Description
+import com.donald.abrsmappserver.question.ParentQuestion
+import com.donald.abrsmappserver.utils.RandomIntegerGenerator.DynamicIntRandom
+import com.donald.abrsmappserver.utils.RandomIntegerGenerator.buildConstraint
 import java.sql.Connection
 import java.util.*
 
-class SimpleCompound(database: Connection) : GroupGenerator("simple_compound", database) {
+private const val PARENT_QUESTION_COUNT = 1
+private const val CHILD_QUESTION_COUNT = 1
+private const val OPTION_COUNT = 3
+private val QUESTION_VARIATION_NAMES = arrayOf("1c", "2c", "3c", "4c", "5c", "6c", "1s", "2s", "3s")
 
-    private val random = Random()
+class SimpleCompound(database: Connection) : GroupGenerator(
+    "simple_compound",
+    PARENT_QUESTION_COUNT,
+    database
+) {
 
-    override fun generateGroup(groupNumber: Int, context: Context): QuestionGroup {
-        val questions = List(NO_OF_QUESTIONS) { index ->
-            val variation: Int = random.nextInt(QUESTION_VARIATION_NAMES.size)
+    private val variationConstraint = buildConstraint {
+        withRange(QUESTION_VARIATION_NAMES.indices)
+    }
+
+    //private val random = Random()
+
+    override fun generateGroup(groupNumber: Int, parentQuestionCount: Int, context: Context): QuestionGroup {
+        val variationRandom = DynamicIntRandom(variationConstraint, autoReset = true)
+        val questions = List(parentQuestionCount) { parentIndex ->
+            val variation: Int = variationRandom.generateAndExclude()
             val variationString = QUESTION_VARIATION_NAMES[variation]
             val arg1: String
             val arg2: String
@@ -24,12 +42,15 @@ class SimpleCompound(database: Connection) : GroupGenerator("simple_compound", d
                 arg1 = context.getString("simple_compound_compound_time_string")
                 arg2 = context.getString("simple_compound_simple_time_string")
             }
-            val images = Array(NO_OF_OPTIONS) { i ->
-                "a_simple_compound_" + variationString + "_" + (i + 1)
-            }
-            val dispositions = images.shuffle()
 
-            val descriptions = ArrayList<Description>(3 + NO_OF_OPTIONS * 2)
+            val (shuffledImages, dispositions) = run {
+                val images = List(OPTION_COUNT) { i ->
+                    "a_simple_compound_" + variationString + "_" + (i + 1)
+                }
+                images.shuffled()
+            }
+
+            val descriptions = ArrayList<Description>(3 + OPTION_COUNT * 2)
             descriptions += Description(
                 Description.Type.Text,
                 context.getString("simple_compound_question_desc_1", arg1)
@@ -42,43 +63,41 @@ class SimpleCompound(database: Connection) : GroupGenerator("simple_compound", d
                 Description.Type.Text,
                 context.getString("simple_compound_question_desc_2", arg2)
             )
-            for (i in images.indices) {
+            for (i in shuffledImages.indices) {
                 descriptions += Description(
                     Description.Type.Text,
                     context.getString("simple_compound_index", i + 1)
                 )
                 descriptions += Description(
                     Description.Type.Image,
-                    images[i]
+                    shuffledImages[i]
                 )
             }
-            val options = List(NO_OF_OPTIONS) { i ->
+            val options = List(OPTION_COUNT) { i ->
                 context.getString("simple_compound_index", i + 1)
             }
 
-            MultipleChoiceQuestion(
-                number = index + 1,
+            ParentQuestion(
+                number = parentIndex + 1,
                 descriptions = descriptions,
-                optionType = MultipleChoiceQuestion.OptionType.Text,
-                options = options,
-                answer = MultipleChoiceQuestion.Answer(null, dispositions[0])
+                childQuestions = List(CHILD_QUESTION_COUNT) { childIndex ->
+                    MultipleChoiceQuestion(
+                        number = childIndex + 1,
+                        //descriptions = descriptions,
+                        optionType = MultipleChoiceQuestion.OptionType.Text,
+                        options = options,
+                        answer = MultipleChoiceQuestion.Answer(null, dispositions[0])
+                    )
+                }
             )
         }
 
         return QuestionGroup(
             name = getGroupName(context.bundle),
             number = groupNumber,
-            questions = questions,
+            parentQuestions = questions,
             descriptions = emptyList()
         )
-    }
-
-    companion object {
-
-        private const val NO_OF_QUESTIONS = 1
-        private const val NO_OF_OPTIONS = 3
-        private val QUESTION_VARIATION_NAMES = arrayOf("1c", "2c", "3c", "4c", "5c", "6c", "1s", "2s", "3s")
-
     }
 
 }

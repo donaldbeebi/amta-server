@@ -72,6 +72,8 @@ public class Note
 		return pitch;
 	}
 
+	public Accidental accidental() { return accidental; }
+
 	public void setNotations(Notations notations)
 	{
 		this.notations = notations;

@@ -4,7 +4,7 @@ import com.donald.abrsmappserver.utils.forEachArg
 import org.json.JSONArray
 import org.json.JSONObject
 
-abstract class Question(
+abstract class ChildQuestion(
     val number: Int,
     val descriptions: List<Description> = emptyList(),
     val inputHint: String?

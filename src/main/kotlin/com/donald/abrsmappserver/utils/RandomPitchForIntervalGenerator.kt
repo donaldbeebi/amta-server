@@ -3,13 +3,22 @@ package com.donald.abrsmappserver.utils
 import com.donald.abrsmappserver.utils.music.*
 import java.util.*
 
+// TODO: PROVIDE THE FUNCTIONALITY TO GENERATE AND EXCLUDE
+
 class RandomPitchForIntervalGenerator {
 
     private val random: Random = Random()
-    private var lowerPitch: FreePitch? = null
-    private var upperPitch: FreePitch? = null
+    //private var lowerPitch: FreePitch? = null
+    //private var upperPitch: FreePitch? = null
     private var staffLowerBound = 0
     private var staffUpperBound = 0
+    private var relIdLowerBound = Music.LOWEST_REL_ID
+    private var relIdUpperBound = Music.HIGHEST_REL_ID
+
+    fun setRelIdBounds(lowerBound: Int, upperBound: Int) {
+        relIdLowerBound = lowerBound
+        relIdUpperBound = upperBound
+    }
 
     fun setStaffBounds(lowerBound: Int, upperBound: Int) {
         require(lowerBound < upperBound)
@@ -17,7 +26,7 @@ class RandomPitchForIntervalGenerator {
         staffUpperBound = upperBound
     }
 
-    fun randomForInterval(interval: Interval, clef: Clef.Type) {
+    fun randomForInterval(interval: Interval, clef: Clef.Type): Result {
         // 1. figure out the staff position range of the lower note and pick a random note within the range
         val lowerPitchAbsStep = run {
             val highestStaffPos = staffUpperBound - interval.numberN() + 1
@@ -29,27 +38,28 @@ class RandomPitchForIntervalGenerator {
         val lowerPitchLetter = Music.letterFromAbsStep(lowerPitchAbsStep)
 
         // 2. figure out the possible rel id
-        val finalRelId = run {
-            val lowestRelId = Music.LOWEST_REL_ID.coerceAtLeast(Music.LOWEST_REL_ID - interval.fifths())
-            val highestRelId = Music.HIGHEST_REL_ID.coerceAtMost(Music.HIGHEST_REL_ID - interval.fifths())
+        val finalFirstRelId = run {
+            val lowestRelId = relIdLowerBound.coerceAtLeast(relIdLowerBound - interval.fifths())
+            val highestRelId = relIdUpperBound.coerceAtMost(relIdUpperBound - interval.fifths())
             val range = highestRelId - lowestRelId + 1
-            check(range > 0)
+            assert(range > 0)
 
             val numberOfPossibleRelIds = numberOfPossibleRelIds(lowestRelId, highestRelId, lowerPitchLetter)
             val lowestRelIdForLetter = lowestRelIdForLetter(lowestRelId, lowerPitchLetter)
             random.nextInt(numberOfPossibleRelIds) * Music.FIFTH_TABLE_COLUMN_COUNT + lowestRelIdForLetter
         }
 
-        lowerPitch = FreePitch(
+        val lowerPitch = FreePitch(
             lowerPitchLetter,
-            Music.alterFromId(finalRelId),
+            Music.alterFromId(finalFirstRelId),
             Music.octaveFromAbsStep(lowerPitchAbsStep)
         )
 
         val upperPitch = FreePitch(lowerPitch)
         val result = upperPitch.translateUp(interval)
         check(result)
-        this.upperPitch = upperPitch
+
+        return Result(lowerPitch, upperPitch)
     }
 
     private fun numberOfPossibleRelIds(lowestRelId: Int, highestRelId: Int, letter: Letter): Int {//= (range + letter.ordinal) / Music.ID_TABLE_COLUMN_COUNT
@@ -63,6 +73,7 @@ class RandomPitchForIntervalGenerator {
 
     private fun lowestRelIdForLetter(lowestRelId: Int, letter: Letter) = (Math.floorMod(letter.ordinal - lowestRelId, Music.FIFTH_TABLE_COLUMN_COUNT) + lowestRelId)
 
+    /*
     fun lowerPitch(): FreePitch {
         return lowerPitch ?: throw IllegalStateException()
     }
@@ -70,5 +81,8 @@ class RandomPitchForIntervalGenerator {
     fun upperPitch(): FreePitch {
         return upperPitch ?: throw IllegalStateException()
     }
+     */
+
+    data class Result(val lowerPitch: FreePitch, val upperPitch: FreePitch)
 
 }

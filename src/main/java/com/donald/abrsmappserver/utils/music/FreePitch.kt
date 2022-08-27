@@ -3,6 +3,7 @@ package com.donald.abrsmappserver.utils.music
 import com.donald.abrsmappserver.utils.music.AbsolutePitch
 import com.donald.abrsmappserver.utils.music.FreePitch
 import com.donald.abrsmappserver.utils.music.Music
+import com.donald.abrsmappserver.utils.range.FreePitchRange
 import java.lang.IllegalArgumentException
 
 class FreePitch : AbsolutePitch, Comparable<FreePitch> {
@@ -49,7 +50,7 @@ class FreePitch : AbsolutePitch, Comparable<FreePitch> {
         return notes
     }
 
-    fun enharmonicExc(): Array<FreePitch?> {
+    fun enharmonicExc(): Array<FreePitch> {
         val trueAbsoluteID = id
         val currentNote = FreePitch(this)
         currentNote.removeConstraint()
@@ -62,17 +63,15 @@ class FreePitch : AbsolutePitch, Comparable<FreePitch> {
         val currentNoteRelativeID = Music.relIdFromAbsId(currentNote.id())
         val fifths = Math.abs(Interval.DIM_2.fifths())
         val arraySize = (currentNoteRelativeID + fifths) / fifths - 1
-        val notes = arrayOfNulls<FreePitch>(arraySize)
+        val notes = ArrayList<FreePitch>(arraySize)
         run {
-            var i = 0
             do {
                 if (trueAbsoluteID != currentNote.id()) {
-                    notes[i] = FreePitch(currentNote)
-                    i++
+                    notes += FreePitch(currentNote)
                 }
             } while (currentNote.translateUp(Interval.DIM_2))
         }
-        return notes
+        return notes.toTypedArray()
     }
 
     /*
@@ -153,4 +152,7 @@ class FreePitch : AbsolutePitch, Comparable<FreePitch> {
     override fun compareTo(other: FreePitch): Int {
         return ordinal() - other.ordinal()
     }
+
+    operator fun rangeTo(other: FreePitch) = FreePitchRange(this, other)
+
 }

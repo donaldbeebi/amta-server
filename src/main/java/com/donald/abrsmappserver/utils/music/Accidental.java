@@ -10,8 +10,7 @@ public enum Accidental
     FLAT        (-1, "b",  "b",  "flat"),
     NATURAL     (0,  "",   "n",  "natural"),
     SHARP       (1,  "#",  "s",  "sharp"),
-    SHARP_SHARP (2,  "x", "ss", "sharp-sharp"),
-    NONE        (0,  "",   "",   "");
+    SHARP_SHARP (2,  "x", "ss", "sharp-sharp");
 
     private final int alter;
     private final String symbol;

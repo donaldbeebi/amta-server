@@ -1,6 +1,7 @@
 package com.donald.abrsmappserver.generator.groupgenerator
 
 import com.donald.abrsmappserver.exercise.Context
+import com.donald.abrsmappserver.generator.groupgenerator.abstractgroupgenerator.GroupGenerator
 import com.donald.abrsmappserver.utils.RandomPitchForIntervalGenerator
 import com.donald.abrsmappserver.question.QuestionGroup
 import com.donald.abrsmappserver.question.MultipleChoiceQuestion
@@ -8,49 +9,54 @@ import com.donald.abrsmappserver.utils.music.Measure.Barline
 import com.donald.abrsmappserver.utils.RandomIntegerGenerator.RandomIntegerGeneratorBuilder
 import com.donald.abrsmappserver.utils.music.*
 import com.donald.abrsmappserver.question.Description
+import com.donald.abrsmappserver.question.ParentQuestion
+import com.donald.abrsmappserver.utils.RandomIntegerGenerator.multirandom.Random1
 import com.donald.abrsmappserver.utils.music.new.EXCLUDED_INTERVALS
 import com.donald.abrsmappserver.utils.music.new.isTested
+import com.donald.abrsmappserver.utils.range.toRangeList
 import java.sql.Connection
 import java.util.*
 
-class IntervalNaming(database: Connection) : GroupGenerator("interval_naming", database) {
+private const val PARENT_QUESTION_COUNT = 3
+private const val OPTION_COUNT = 4
+private const val CHILD_QUESTION_COUNT = 1
+private val INTERVALS = Interval.intervals - EXCLUDED_INTERVALS
+private val KEY_ACC_COUNTS = (-4..4).toRangeList()
+private val CLEFS = listOf(Clef.Type.Bass, Clef.Type.Treble)
+
+class IntervalNaming(database: Connection) : GroupGenerator(
+    "interval_naming",
+    PARENT_QUESTION_COUNT,
+    database
+) {
 
     private val random = Random()
 
-    private val randomForInterval = RandomIntegerGeneratorBuilder.generator()
-        .withLowerBound(0)
-        .withUpperBound(Interval.values().size - 1)
-        .excludingIf { intervalIndex -> Interval.values()[intervalIndex] in EXCLUDED_INTERVALS }
-        .build()
+    override fun generateGroup(groupNumber: Int, parentQuestionCount: Int, context: Context): QuestionGroup {
+        val clefRandom = Random1(CLEFS, autoReset = true)
+        val intervalRandom = Random1(INTERVALS, autoReset = true)
+        val keyAccCountRandom = Random1(KEY_ACC_COUNTS, autoReset = true)
+        val randomPitchRandom = RandomPitchForIntervalGenerator().apply {
+            setStaffBounds(-7, 15)
+        }
+        //val relPitchOrdinalRandom = Random1(REL_PITCH_ORDINAL_LIST, autoReset = true)
 
-    private val randomForKey = RandomIntegerGeneratorBuilder.generator()
-        .withLowerBound(-4)
-        .withUpperBound(4)
-        .build()
+        val parentQuestions = List(parentQuestionCount) { parentIndex ->
+            val noAcc = random.nextBoolean()
+            val key = if (noAcc) Key(0, Mode.Major) else Key(keyAccCountRandom.generateAndExclude(), Mode.Major)
+            //val clefType = if (random.nextBoolean()) Clef.Type.Bass else Clef.Type.Treble
+            val clefType = clefRandom.generateAndExclude()
+            val interval = intervalRandom.generateAndExclude()
+            val (firstPitch, secondPitch) = randomPitchRandom.randomForInterval(interval, clefType)
+            //val firstPitch = randomForPitches.lowerPitch()
+            //val secondPitch = randomForPitches.upperPitch()
 
-    private val randomForPitches = RandomPitchForIntervalGenerator().apply {
-        setStaffBounds(-7, 15)
-    }
-
-    override fun generateGroup(groupNumber: Int, context: Context): QuestionGroup {
-        val questions = List(NO_OF_QUESTIONS) { index ->
-            val noAcc: Boolean = random.nextBoolean()
-            val key = if (noAcc) Key(0, Mode.MAJOR) else Key(randomForKey.nextInt(), Mode.MAJOR)
-            val clefType = if (random.nextBoolean()) Clef.Type.BASS else Clef.Type.TREBLE
-            val interval = Interval.values()[randomForInterval.nextInt()]
-            randomForPitches.randomForInterval(interval, clefType)
-            var firstPitch = randomForPitches.lowerPitch()
-            var secondPitch = randomForPitches.upperPitch()
             val score = Score()
-            val part = score.newPart("P1")
-            val measure = part.newMeasure()
-            measure.setAttributes(
-                Measure.Attributes(1, key, null, 1, arrayOf(Clef(clefType)))
-            )
-            measure.addNote(Note.pitchedNote(firstPitch, 4, Note.Type.WHOLE, 1))
-            measure.addNote(Note.pitchedNote(secondPitch, 4, Note.Type.WHOLE, 1))
-            measure.setBarline(Barline(Barline.BarStyle.LIGHT_LIGHT))
-            val questionDescriptions = listOf(
+            score.newPart()
+            score.newMeasure(Measure.Attributes(1, key, null, 1, arrayOf(Clef(clefType))), Barline(Barline.BarStyle.LIGHT_LIGHT))
+            score.addPitchedNote(firstPitch, 4, Note.Type.WHOLE)
+            score.addPitchedNote(secondPitch, 4, Note.Type.WHOLE)
+            val parentDescriptions = listOf(
                 Description(Description.Type.Score, score.toDocument().asXML())
             )
             val answerUsesCompound = random.nextBoolean()
@@ -62,7 +68,7 @@ class IntervalNaming(database: Connection) : GroupGenerator("interval_naming", d
 
             // TODO: MORE EVEN PROBABILITY DISTRIBUTION
             // generating wrong options
-            val wrongOptions = ArrayList<String>()
+            val wrongOptions = HashSet<String>()//ArrayList<String>()
             // 1. wrong quality
             for (wrongQuality in interval.sameNumberExc()) {
                 if (wrongQuality.isTested) {
@@ -156,19 +162,24 @@ class IntervalNaming(database: Connection) : GroupGenerator("interval_naming", d
             }
             // 7. wrong accidental
             // TODO: PERHAPS ADD BOTH SIMPLE AND COMPOUND??
-            if ((firstPitch.alter() != 0 || secondPitch.alter() != 0)
+            if (
+            // if one of the alters is not 0
+                (firstPitch.alter() != 0 || secondPitch.alter() != 0)
+                // and they are not the same
                 && firstPitch.alter() != secondPitch.alter()
             ) //if((firstPitch.accidental() != Accidental.NONE || secondPitch.accidental() != Accidental.NONE)
             //	&& firstPitch.accidental() != secondPitch.accidental())
             {
-                firstPitch.naturalize()
-                secondPitch.naturalize()
-                if (firstPitch.ordinal() > secondPitch.ordinal()) {
-                    val temp = firstPitch
-                    firstPitch = secondPitch
-                    secondPitch = temp
+                var firstPitch1 = FreePitch(firstPitch)
+                var secondPitch1 = FreePitch(secondPitch)
+                firstPitch1.naturalize()
+                secondPitch1.naturalize()
+                if (firstPitch1.ordinal() > secondPitch1.ordinal()) {
+                    val temp = firstPitch1
+                    firstPitch1 = secondPitch1
+                    secondPitch1 = temp
                 }
-                val wrongInterval = Interval.between(firstPitch, secondPitch)
+                val wrongInterval = Interval.between(firstPitch1, secondPitch1)
                 if (wrongInterval.isTested) {
                     wrongOptions.add(
                         if (random.nextBoolean()) {
@@ -179,37 +190,48 @@ class IntervalNaming(database: Connection) : GroupGenerator("interval_naming", d
                     )
                 }
             }
+
+            val wrongOptionsArray = wrongOptions.toTypedArray()
+
             val randomForWrongOptions = RandomIntegerGeneratorBuilder.generator()
                 .withLowerBound(0)
-                .withUpperBound(wrongOptions.size - 1)
+                .withUpperBound(wrongOptionsArray.size - 1)
                 .build()
 
-            val options = List<String>(NO_OF_OPTIONS) { i ->
+            val options = List<String>(OPTION_COUNT) { i ->
                 if (i == 0) {
                     correctOption
                 }
                 else {
                     val randomIndex = randomForWrongOptions.nextInt()
                     randomForWrongOptions.exclude(randomIndex)
-                    wrongOptions[randomIndex]
+                    wrongOptionsArray[randomIndex]
                 }
             }
 
             val dispositions = options.shuffle()
 
-            MultipleChoiceQuestion(
-                number = index + 1,
-                descriptions = questionDescriptions,
-                optionType = MultipleChoiceQuestion.OptionType.Text,
-                options = options,
-                answer = MultipleChoiceQuestion.Answer(null, dispositions[0])
+            ParentQuestion(
+                number = parentIndex + 1,
+                descriptions = parentDescriptions,
+                childQuestions = List(CHILD_QUESTION_COUNT) { childIndex ->
+                    MultipleChoiceQuestion(
+                        number = childIndex + 1,
+                        descriptions = emptyList(),
+                        optionType = MultipleChoiceQuestion.OptionType.Text,
+                        options = options,
+                        answer = MultipleChoiceQuestion.Answer(null, dispositions[0])
+                    )
+                }
             )
+
         }
+
 
         return QuestionGroup(
             name = getGroupName(context.bundle),
             number = groupNumber,
-            questions = questions,
+            parentQuestions = parentQuestions,
             descriptions = listOf(
                 Description(
                     Description.Type.Text,
@@ -217,13 +239,6 @@ class IntervalNaming(database: Connection) : GroupGenerator("interval_naming", d
                 )
             )
         )
-    }
-
-    companion object {
-
-        private const val NO_OF_QUESTIONS = 3
-        private const val NO_OF_OPTIONS = 4
-
     }
 
 }

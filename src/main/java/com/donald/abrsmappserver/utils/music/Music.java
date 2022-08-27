@@ -62,6 +62,11 @@ public final class Music
 		return id % PITCHES_PER_OCT;
 	}
 
+	public static int absIdFromRelId(int id, int octave)
+	{
+		return id + octave * PITCHES_PER_OCT;
+	}
+
 	public static int relIdFromLetter(Letter letter, int alter)
 	{
 		return letter.ordinal() + (alter + ALTER_RANGE / 2) * Letter.NO_OF_LETTERS;
@@ -232,4 +237,5 @@ public final class Music
 	{
 		return ChordInversion.values()[id % ChordInversion.values().length];
 	}
+
 }

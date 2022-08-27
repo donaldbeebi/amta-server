@@ -1,5 +1,6 @@
-package com.donald.abrsmappserver.utils
+package com.donald.abrsmappserver.utils.range
 
+import com.donald.abrsmappserver.utils.music.fmod
 import kotlin.math.abs
 
 class IntRangeList(
@@ -9,7 +10,7 @@ class IntRangeList(
 ) : List<Int> {
 
     init {
-        require(absStep > 0)
+            require(absStep > 0)
     }
 
     val step = when {
@@ -19,9 +20,11 @@ class IntRangeList(
 
     override val size = count(first, last, absStep)
 
-    override fun contains(element: Int): Boolean = element in first..last
+    override fun contains(element: Int): Boolean {
+        return element in first..last && abs(element - first) fmod absStep == 0
+    }
 
-    override fun containsAll(elements: Collection<Int>): Boolean = elements.all { it in first..last }
+    override fun containsAll(elements: Collection<Int>): Boolean = elements.all { it in this }
 
     override fun get(index: Int): Int {
         if (index !in 0 until size) throw IndexOutOfBoundsException("IntProgList of size $size accessed with index $index")
@@ -92,14 +95,16 @@ val IntProgression.count: Int
 }
 
 infix fun Int.listTo(last: Int) = IntRangeList(first = this, last)
+
 infix fun Int.listUntil(lastExclusive: Int) = IntRangeList(first = this, lastExclusive - 1)
+
 infix fun IntRangeList.absStep(absStep: Int) = IntRangeList(this.first, this.last, absStep)
 
-fun IntProgression.toIntRangeList(): IntRangeList{
+fun IntProgression.toRangeList(): IntRangeList{
     require(
         last > first && step > 0
                 || last < first && step < 0
                 || last == first
-    ) { "Int progression $this does not qualify for a conversion to IntRangeList" }
+    ) { "IntProgression $this does not qualify for a conversion to IntRangeList" }
     return IntRangeList(first, last, abs(step))
 }

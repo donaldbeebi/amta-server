@@ -1,5 +1,7 @@
 package com.donald.abrsmappserver.utils.music;
 
+import com.google.common.collect.ImmutableList;
+
 import java.util.ArrayList;
 import java.util.ResourceBundle;
 
@@ -45,13 +47,16 @@ public enum Interval
             "13th_number_string", "14th_number_string"
         };
 
+    public static final ImmutableList<Interval> intervals;
+    static {
+        intervals = ImmutableList.copyOf(values());
+    }
 
     private static final int NO_OF_NUMBERS_SIMPLE = 7;
     private static final int NO_OF_NUMBERS_ALL = 14;
     private static final int NO_OF_SECTIONS = 2;
     private static final int UPPER_BOUND = values().length / NO_OF_SECTIONS - 1;
     private static final int SECTION_LENGTH = values().length / NO_OF_SECTIONS;
-
 
     public enum Quality
     {

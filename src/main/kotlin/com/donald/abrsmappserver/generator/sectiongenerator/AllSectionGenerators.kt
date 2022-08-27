@@ -56,21 +56,21 @@ class TermsSignsInstrumentsSection(
 
 class MusicInContextSection(
     database: Connection
-) : SectionGenerator(
+) : Section7Generator(
     identifier = "music_in_context",
-    generators = listOf(OctaveComparison(database)),
     variationCount = 29,
+    generators = listOf(OctaveComparison(database), ScoreFact(database), InstrumentPitch(database), NoteCounting(database), ScoreNumber(database)),
     database = database
 ) {
 
-    override fun generateDescriptions(context: Context): List<Description> {
+    override fun generateDescriptions(sectionVariation: Int, context: Context): List<Description> {
         val result = database.prepareStatement("""
             SELECT instrument_1_string_key, instrument_2_string_key
             FROM questions_section_7
             WHERE variation = ?
             LIMIT 1;
         """.trimIndent()).apply {
-            setInt(1, context.sectionVariation)
+            setInt(1, sectionVariation)
         }.executeQuery()
         result.next()
 
@@ -88,7 +88,7 @@ class MusicInContextSection(
 
         return listOf(
             firstDescription,
-            Description(Description.Type.Image, "q_section_7_score_${context.sectionVariation}")
+            Description(Description.Type.Image, "q_section_7_score_${sectionVariation}")
         )
     }
 

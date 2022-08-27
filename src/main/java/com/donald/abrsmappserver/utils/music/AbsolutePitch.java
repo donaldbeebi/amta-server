@@ -3,6 +3,10 @@ package com.donald.abrsmappserver.utils.music;
 import org.dom4j.Element;
 import org.json.JSONObject;
 
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.function.Consumer;
+
 public abstract class AbsolutePitch extends Pitch
 {
     public AbsolutePitch(int id)
@@ -84,4 +88,5 @@ public abstract class AbsolutePitch extends Pitch
         object.put("octave", octave());
         return object;
     }
+
 }

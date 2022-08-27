@@ -1,51 +1,53 @@
 package com.donald.abrsmappserver.generator.groupgenerator
 
 import com.donald.abrsmappserver.exercise.Context
+import com.donald.abrsmappserver.generator.groupgenerator.abstractgroupgenerator.GroupGenerator
+import com.donald.abrsmappserver.question.*
 import com.donald.abrsmappserver.utils.music.ChordNumber
-import com.donald.abrsmappserver.question.Description
-import com.donald.abrsmappserver.question.QuestionGroup
-import com.donald.abrsmappserver.question.MultipleChoiceQuestion
-import com.donald.abrsmappserver.question.Question
 import java.lang.IllegalStateException
 import java.sql.Connection
+import java.sql.ResultSet
 
-class CadenceChord(database: Connection) : GroupGenerator("cadence_chord", database) {
+private const val CHILD_QUESTION_COUNT = 5
+private const val PARENT_QUESTION_COUNT = 1
+private val OPTION_COUNT = ChordNumber.values().size
+private val OPTION_LIST = List<String>(OPTION_COUNT) { index ->
+    ChordNumber.values()[index].string()
+}
 
-    override fun generateGroup(groupNumber: Int, context: Context): QuestionGroup {
+class CadenceChord(database: Connection) : GroupGenerator(
+    "cadence_chord",
+    PARENT_QUESTION_COUNT,
+    database
+) {
+
+    override fun generateGroup(groupNumber: Int, parentQuestionCount: Int, context: Context): QuestionGroup {
         val result = database.prepareStatement("""
-            SELECT variation, chord_number_1, chord_number_2, chord_number_3, chord_number_4, chord_number_5
-            FROM questions_cadence_chord
-            WHERE variation = 12
-            ORDER BY RANDOM() LIMIT 1;
-        """.trimIndent()).executeQuery()
+            WITH RECURSIVE loop(variation, chord_number_1, chord_number_2, chord_number_3, chord_number_4, chord_number_5, iteration) AS (
+                SELECT variation, chord_number_1, chord_number_2, chord_number_3, chord_number_4, chord_number_5, 1 AS iteration FROM questions_cadence_chord
+                UNION ALL
+                SELECT variation, chord_number_1, chord_number_2, chord_number_3, chord_number_4, chord_number_5, iteration + 1 from loop
+                LIMIT ?
+            )
+            SELECT variation, chord_number_1, chord_number_2, chord_number_3, chord_number_4, chord_number_5 FROM loop
+            ORDER BY iteration, RANDOM()
+        """.trimIndent()).apply {
+            setInt(1, parentQuestionCount)
+        }.executeQuery()
+
         result.next()
         val variation = result.getInt("variation")
 
-        val questions = List<Question>(NO_OF_QUESTIONS) { index ->
-            val answerString = result.getString("chord_number_${index + 1}")
-            val correctOptionIndices = if (answerString.contains(',')) {
-                val answerStrings = answerString.split(',')
-                List(answerStrings.size) { i ->
-                    ChordNumber.fromString(answerStrings[i])?.ordinal ?: throw IllegalStateException(
-                        result.getString(answerStrings[i]) + " is not a valid chord number."
+        val parentQuestions = List(parentQuestionCount) { parentIndex ->
+            ParentQuestion(
+                number = parentIndex + 1,
+                descriptions = listOf (
+                    Description(
+                        Description.Type.Image,
+                        "q_cadence_chord_$variation"
                     )
-                }
-            } else {
-                val currentNumber = ChordNumber.fromString(
-                    result.getString("chord_number_${index + 1}")
-                ) ?: throw IllegalStateException(
-                    result.getString("chord_number_${index + 1}") + " is not a valid chord number."
-                )
-                listOf(currentNumber.ordinal)
-            }
-
-            MultipleChoiceQuestion(
-                number = index + 1,
-                descriptions = emptyList(),
-                optionType = MultipleChoiceQuestion.OptionType.Text,
-                options = OPTION_LIST.toList(),
-                answer = MultipleChoiceQuestion.Answer(null, correctOptionIndices),
-                inputHint = context.getString("cadence_chord_input_hint", index + 1)
+                ),
+                childQuestions = List<ChildQuestion>(CHILD_QUESTION_COUNT) { childIndex -> generateChildQuestion(childIndex, result, context) }
             )
         }
 
@@ -56,24 +58,39 @@ class CadenceChord(database: Connection) : GroupGenerator("cadence_chord", datab
                 Description(
                     Description.Type.Text,
                     context.getString("cadence_chord_group_desc")
-                ),
-                Description(
-                    Description.Type.Image,
-                    "q_cadence_chord_$variation"
-                ),
+                )
             ),
-            questions = questions
+            parentQuestions = parentQuestions
         )
+
     }
 
-    companion object {
-
-        private const val NO_OF_QUESTIONS = 5
-        private val NO_OF_OPTIONS = ChordNumber.values().size
-        private val OPTION_LIST = List<String>(NO_OF_OPTIONS) { index ->
-            ChordNumber.values()[index].string()
+    private fun generateChildQuestion(childIndex: Int, result: ResultSet, context: Context): MultipleChoiceQuestion {
+        val answerString = result.getString("chord_number_${childIndex + 1}")
+        val correctOptionIndices = if (answerString.contains(',')) {
+            val answerStrings = answerString.split(',')
+            List(answerStrings.size) { i ->
+                ChordNumber.fromString(answerStrings[i])?.ordinal ?: throw IllegalStateException(
+                    result.getString(answerStrings[i]) + " is not a valid chord number."
+                )
+            }
+        } else {
+            val currentNumber = ChordNumber.fromString(
+                result.getString("chord_number_${childIndex + 1}")
+            ) ?: throw IllegalStateException(
+                result.getString("chord_number_${childIndex + 1}") + " is not a valid chord number."
+            )
+            listOf(currentNumber.ordinal)
         }
 
+        return MultipleChoiceQuestion(
+            number = childIndex + 1,
+            descriptions = emptyList(),
+            optionType = MultipleChoiceQuestion.OptionType.Text,
+            options = OPTION_LIST.toList(),
+            answer = MultipleChoiceQuestion.Answer(null, correctOptionIndices),
+            inputHint = context.getString("cadence_chord_input_hint", childIndex + 1)
+        )
     }
 
 }

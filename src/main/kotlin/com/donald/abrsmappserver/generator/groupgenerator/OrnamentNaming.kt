@@ -1,69 +1,94 @@
 package com.donald.abrsmappserver.generator.groupgenerator
 
 import com.donald.abrsmappserver.exercise.Context
+import com.donald.abrsmappserver.generator.groupgenerator.abstractgroupgenerator.GroupGenerator
 import com.donald.abrsmappserver.question.QuestionGroup
 import com.donald.abrsmappserver.question.MultipleChoiceQuestion
 import com.donald.abrsmappserver.question.Description
+import com.donald.abrsmappserver.question.ParentQuestion
 import java.sql.Connection
 
-class OrnamentNaming(database: Connection) : GroupGenerator("ornament_naming", database) {
+private const val PARENT_QUESTION_COUNT = 2
+private const val CHILD_QUESTION_COUNT = 1
+private const val OPTION_COUNT = 4
 
-    override fun generateGroup(groupNumber: Int, context: Context): QuestionGroup {
-        val questions = List(NO_OF_QUESTIONS) { index ->
-            var result = database.prepareStatement(
-                "SELECT variation, ornament_id FROM questions_ornament_naming " +
-                        "ORDER BY RANDOM() LIMIT 1;"
-            ).executeQuery()
-            result.next()
-            val variation = result.getInt("variation")
-            val ornamentId = result.getInt("ornament_id")
-            result = database.prepareStatement(
-                "SELECT string_key FROM data_ornaments " +
-                        "WHERE id = ?;"
-            ).apply {
+class OrnamentNaming(database: Connection) : GroupGenerator(
+    "ornament_naming",
+    PARENT_QUESTION_COUNT,
+    database
+) {
+
+    override fun generateGroup(groupNumber: Int, parentQuestionCount: Int, context: Context): QuestionGroup {
+        val questionResult = database.prepareStatement("""
+            WITH loop(variation, ornament_id, iteration) AS (
+                SELECT variation, ornament_id, 1 AS iteration FROM questions_ornament_naming
+                UNION ALL
+                SELECT variation, ornament_id, iteration + 1 FROM loop LIMIT ?
+            )
+            SELECT variation, ornament_id FROM loop
+            ORDER BY iteration, RANDOM()
+        """.trimIndent()).apply{
+            setInt(1, parentQuestionCount)
+        }.executeQuery()
+        questionResult.next()
+
+        val questions = List(parentQuestionCount) { parentIndex ->
+            val variation = questionResult.getInt("variation")
+            val ornamentId = questionResult.getInt("ornament_id")
+            val instrumentResult = database.prepareStatement("""
+                SELECT string_key
+                FROM data_ornaments
+                WHERE id = ?;
+            """.trimIndent()).apply {
                 setInt(1, ornamentId)
             }.executeQuery()
-            result.next()
+            instrumentResult.next()
 
-            val correctOption = context.getString(result.getString("string_key"))
+            val correctOption = context.getString(instrumentResult.getString("string_key"))
 
-            result = database.prepareStatement(
-                "SELECT string_key FROM data_ornaments " +
-                        "WHERE id != ? " +
-                        "ORDER BY RANDOM() LIMIT ?;"
-            ).apply {
+            val ornamentResult = database.prepareStatement("""
+                SELECT string_key
+                FROM data_ornaments
+                WHERE id != ?
+                ORDER BY RANDOM() LIMIT ?;
+            """.trimIndent()).apply {
                 setInt(1, ornamentId)
-                setInt(2, NO_OF_OPTIONS - 1)
+                setInt(2, OPTION_COUNT - 1)
             }.executeQuery()
 
-            val options = List(NO_OF_OPTIONS) { i ->
+            val options = List(OPTION_COUNT) { i ->
                 if (i == 0) {
                     correctOption
                 } else {
-                    result.next()
-                    context.getString(result.getString("string_key"))
+                    ornamentResult.next()
+                    context.getString(ornamentResult.getString("string_key"))
                 }
             }
             val dispositions = options.shuffle()
 
-            MultipleChoiceQuestion(
-                number = index + 1,
+            ParentQuestion(
+                number = parentIndex + 1,
                 descriptions = listOf(
                     Description(
                         Description.Type.Image,
                         "q_ornament_naming_$variation"
                     )
                 ),
-                optionType = MultipleChoiceQuestion.OptionType.Text,
-                options = options,
-                answer = MultipleChoiceQuestion.Answer(null, dispositions[0])
+                childQuestions = List(CHILD_QUESTION_COUNT) { childIndex ->
+                    MultipleChoiceQuestion(
+                        number = childIndex + 1,
+                        optionType = MultipleChoiceQuestion.OptionType.Text,
+                        options = options,
+                        answer = MultipleChoiceQuestion.Answer(null, dispositions[0])
+                    )
+                }
             )
         }
 
         return QuestionGroup(
             name = getGroupName(context.bundle),
             number = groupNumber,
-            questions = questions,
+            parentQuestions = questions,
             descriptions = listOf(
                 Description(
                     Description.Type.Text,
@@ -71,13 +96,6 @@ class OrnamentNaming(database: Connection) : GroupGenerator("ornament_naming", d
                 )
             )
         )
-    }
-
-    companion object {
-
-        private const val NO_OF_QUESTIONS = 2
-        private const val NO_OF_OPTIONS = 4
-
     }
 
 }

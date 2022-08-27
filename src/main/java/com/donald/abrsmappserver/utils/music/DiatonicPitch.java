@@ -65,12 +65,12 @@ public class DiatonicPitch extends AbsolutePitch
 		Letter tonicNoteLetter = Music.letterFromId(tonicNoteId);
 		Letter noteLetter = Music.letterFromId(noteId);
 		int degree = Math.floorMod(noteLetter.step() - tonicNoteLetter.step(), Letter.NO_OF_LETTERS);
-		if(mode == Mode.H_MINOR && degree == 6)
+		if(mode == Mode.HarMinor && degree == 6)
 		{
 			// TODO: CHECK IF RELATIVE ID IS VALID
 			noteId += Letter.NO_OF_LETTERS;
 		}
-		else if(mode == Mode.M_MINOR && (degree == 5 || degree == 6))
+		else if(mode == Mode.MelMinor && (degree == 5 || degree == 6))
 		{
 			noteId += Letter.NO_OF_LETTERS;
 		}

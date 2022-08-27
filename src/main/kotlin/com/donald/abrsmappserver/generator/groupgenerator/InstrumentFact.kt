@@ -1,27 +1,72 @@
 package com.donald.abrsmappserver.generator.groupgenerator
 
 import com.donald.abrsmappserver.exercise.Context
-import com.donald.abrsmappserver.utils.RandomIntegerGenerator.RandomIntegerGenerator
-import com.donald.abrsmappserver.utils.RandomIntegerGenerator.RandomIntegerGeneratorBuilder
+import com.donald.abrsmappserver.generator.groupgenerator.abstractgroupgenerator.GroupGenerator
 import com.donald.abrsmappserver.question.Description
+import com.donald.abrsmappserver.question.ParentQuestion
 import com.donald.abrsmappserver.question.QuestionGroup
 import com.donald.abrsmappserver.question.TruthQuestion
+import com.donald.abrsmappserver.utils.RandomIntegerGenerator.Constraint
+import com.donald.abrsmappserver.utils.RandomIntegerGenerator.multirandom.Random1
+import com.donald.abrsmappserver.utils.range.toRangeList
 import java.sql.Connection
 import java.util.*
 
-class InstrumentFact(database: Connection) : GroupGenerator("instrument_fact", database) {
+private const val PARENT_QUESTION_COUNT = 5
+private const val CHILD_QUESTION_COUNT = 1
+private val STATEMENT_KEY_SUFFIXES = arrayOf(
+    "1a", "1b", "2a", "2b", "3", "4", "5", "6", "7", "8", "9"
+)
+val VARIATIONS = STATEMENT_KEY_SUFFIXES.indices.toRangeList()
+
+class InstrumentFact(database: Connection) : GroupGenerator(
+    "instrument_fact",
+    PARENT_QUESTION_COUNT,
+    database
+) {
 
     private val random = Random()
-    private val randomForVariation: RandomIntegerGenerator = RandomIntegerGeneratorBuilder()
+
+    /*
+    private val randomForAnswerCombinations = RandomIntegerGeneratorBuilder.generator()
+        .withLowerBound(0)
+        .withUpperBound(2F.pow(NO_OF_QUESTIONS).toInt())
+        .excludingIf { it.countOneBits() }
+
+     */
+
+    private val variationConstraint = Constraint.Builder()
+        .withRange(STATEMENT_KEY_SUFFIXES.indices)
+        .build()
+
+    /*
+    private val randomForVariation: RandomIntegerGenerator = RandomIntegerGeneratorBuilder.generator()
         .withLowerBound(0)
         .withUpperBound(STATEMENT_KEY_SUFFIXES.size - 1)
         .build()
 
-    override fun generateGroup(groupNumber: Int, context: Context): QuestionGroup {
-        val questions = List(NO_OF_QUESTIONS) { index ->
-            val variation = randomForVariation.nextInt()
+     */
+
+    override fun generateGroup(groupNumber: Int, parentQuestionCount: Int, context: Context): QuestionGroup {
+        val variationRandom = Random1(VARIATIONS, autoReset = true)
+
+        val truths = ArrayList<Boolean>(parentQuestionCount)
+        repeat(parentQuestionCount) { i ->
+            truths += if (i == parentQuestionCount - 1) {
+                when {
+                    true !in truths -> true
+                    false !in truths -> false
+                    else -> random.nextBoolean()
+                }
+            } else {
+                random.nextBoolean()
+            }
+        }
+
+    val parentQuestions = List(parentQuestionCount) { parentIndex ->
+            val variation = variationRandom.generateAndExclude()
             val statementStringKey = "instrument_fact_truth_statement_${STATEMENT_KEY_SUFFIXES[variation]}"
-            val isTrue = random.nextBoolean()
+            val isTrue = truths[parentIndex]
 
             val statement = when (variation) {
                 0, 1 -> statementOfVar1(statementStringKey, isTrue, context)
@@ -36,21 +81,28 @@ class InstrumentFact(database: Connection) : GroupGenerator("instrument_fact", d
                 else -> throw IllegalStateException()
             }
 
-            TruthQuestion(
-                number = index + 1,
+            ParentQuestion(
+                number = parentIndex + 1,
                 descriptions = listOf(
                     Description(
                         Description.Type.TextEmphasize,
-                        statement)
+                        statement
+                    )
                 ),
-                answer = TruthQuestion.Answer(null, isTrue)
+                childQuestions = List(CHILD_QUESTION_COUNT) { childIndex ->
+                    TruthQuestion(
+                        number = childIndex + 1,
+                        descriptions = emptyList(),
+                        answer = TruthQuestion.Answer(null, isTrue)
+                    )
+                }
             )
         }
 
         return QuestionGroup(
             number = groupNumber,
             name = getGroupName(context.bundle),
-            questions = questions,
+            parentQuestions = parentQuestions,
             descriptions = listOf(
                 Description(
                     Description.Type.Text,
@@ -59,6 +111,7 @@ class InstrumentFact(database: Connection) : GroupGenerator("instrument_fact", d
             )
         )
     }
+
 
     private fun statementOfVar1(statementStringKey: String, isTrue: Boolean, context: Context): String {
         var result = database.prepareStatement(
@@ -412,15 +465,6 @@ class InstrumentFact(database: Connection) : GroupGenerator("instrument_fact", d
             higherString,
             secondInstString
         )
-    }
-
-    companion object {
-
-        private const val NO_OF_QUESTIONS = 5
-        private val STATEMENT_KEY_SUFFIXES = arrayOf(
-            "1a", "1b", "2a", "2b", "3", "4", "5", "6", "7", "8", "9"
-        )
-
     }
 
 }

@@ -1,66 +1,40 @@
-package com.donald.musictheoryapp.util.practiceoptions
+package com.donald.abrsmappserver.utils.option
 
-import android.os.Parcel
-import android.os.Parcelable
+import com.donald.abrsmappserver.utils.*
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 
 class SectionOption(
-    val number: Int,
     val identifier: String,
-    val name: String,
-    val options: List<QuestionGroupOption>
-) : Iterable<QuestionGroupOption>, Parcelable {
-    constructor(parcel: Parcel) : this(
-        parcel.readInt(),
-        parcel.readString()!!,
-        parcel.readString()!!,
-        parcel.createTypedArrayList(QuestionGroupOption)!!
-    )
-
-    override fun iterator() = options.iterator()
-
-    override fun writeToParcel(parcel: Parcel, flags: Int) {
-        parcel.writeInt(number)
-        parcel.writeString(identifier)
-        parcel.writeString(name)
-        parcel.writeTypedList(options)
-    }
-
-    override fun describeContents(): Int {
-        return 0
-    }
-
-    companion object CREATOR : Parcelable.Creator<SectionOption> {
-        override fun createFromParcel(parcel: Parcel): SectionOption {
-            return SectionOption(parcel)
-        }
-
-        override fun newArray(size: Int): Array<SectionOption?> {
-            return arrayOfNulls(size)
-        }
-    }
-
+    val questionGroupOptions: List<QuestionGroupOption>
+) : Iterable<QuestionGroupOption> {
+    override fun iterator() = questionGroupOptions.iterator()
     fun toJson() = JSONObject().apply {
         put("identifier", identifier)
         put(
             "groups",
-            JSONArray().apply { options.forEach { put(it.toJson()) } }
+            JSONArray().apply { questionGroupOptions.forEach { put(it.toJson()) } }
         )
     }
 }
 
-typealias PracticeOptions = List<SectionOption>
+fun JSONObject.tryToSectionOption(): Result<SectionOption, JSONException> {
+    val identifier = tryGetString("identifier")
+        .otherwise { return Result.Error(it) }
+        ?: return Result.Error(JSONException("Value for key 'identifier' is null"))
 
-fun PracticeOptions.toJson() = JSONObject().apply {
-    put(
-        "sections",
-        JSONArray().apply {
-            forEach { sectionOption -> put(sectionOption.toJson()) }
-        }
-    )
-}
+    val optionArray = tryGetJSONArray("groups")
+        .otherwise { return Result.Error(it) }
+        ?: return Result.Error(JSONException("Value for key 'options' is null"))
 
-fun PracticeOptions.countPoints() = sumOf { sectionOption ->
-    sectionOption.options.sumOf { it.count }
+    val options = List(optionArray.length()) { optionIndex ->
+        val groupOptionJson = optionArray.tryGetJSONObject(optionIndex)
+            .otherwise { return Result.Error(it) }
+            ?: return Result.Error(JSONException("Group option at index $optionIndex is null"))
+        groupOptionJson.tryToGroupOption()
+            .otherwise { return Result.Error(it) }
+    }
+
+    return Result.Value(SectionOption(identifier, options))
 }

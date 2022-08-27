@@ -1,12 +1,10 @@
 package com.donald.abrsmappserver.utils.music;
 
+import com.google.common.collect.ImmutableList;
 import org.dom4j.Element;
 import org.json.JSONObject;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.ResourceBundle;
+import java.util.*;
 
 public class Clef
 {
@@ -31,10 +29,10 @@ public class Clef
 
 	public enum Type
 	{
-		BASS	("bass", Sign.F, 4),
-		TENOR	("tenor", Sign.C, 4),
-		ALTO	("alto", Sign.C, 3),
-		TREBLE	("treble", Sign.G, 2);
+		Bass  ("bass", Sign.F, 4),
+		Tenor ("tenor", Sign.C, 4),
+		Alto  ("alto", Sign.C, 3),
+		Treble("treble", Sign.G, 2);
 
 		private static final Map<String, Type> stringMap;
 		static
@@ -45,6 +43,16 @@ public class Clef
 				map.put(clef.string(), clef);
 			}
 			stringMap = Collections.unmodifiableMap(map);
+		}
+
+		public static final ImmutableList<Type> types;
+		static {
+			types = ImmutableList.<Type>builder()
+				.add(Bass)
+				.add(Tenor)
+				.add(Alto)
+				.add(Treble)
+				.build();
 		}
 
 		private final String string;

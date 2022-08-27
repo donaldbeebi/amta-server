@@ -3,28 +3,28 @@ package com.donald.abrsmappserver.question
 import org.json.JSONArray
 import org.json.JSONObject
 
-class QuestionSection(
+class Section(
     val number: Int,
-    val name: String,
+    //val name: String,
     val descriptions: List<Description> = emptyList(),
-    val groups: List<QuestionGroup>
+    val questionGroups: List<QuestionGroup>
 ) : Iterable<QuestionGroup> {
 
     val points: Int
-        get() = groups.sumOf { it.points }
+        get() = questionGroups.sumOf { it.points }
     val maxPoints: Int
-        get() = groups.sumOf { it.maxPoints }
+        get() = questionGroups.sumOf { it.maxPoints }
 
-    operator fun contains(group: QuestionGroup): Boolean {
-        return groups.any { it === group }
+    operator fun contains(questionGroup: QuestionGroup): Boolean {
+        return questionGroups.any { it === questionGroup }
     }
 
     operator fun contains(question: ParentQuestion): Boolean {
-        return groups.any { question in it }
+        return questionGroups.any { question in it }
     }
 
     operator fun contains(question: ChildQuestion): Boolean {
-        return groups.any { group ->
+        return questionGroups.any { group ->
             group.parentQuestions.any { parentQuestion ->
                 question in parentQuestion.childQuestions
             }
@@ -35,7 +35,7 @@ class QuestionSection(
         descriptions.forEach { description ->
             if (description.type == Description.Type.Image) imageArray.put(description.content)
         }
-        groups.forEach { group ->
+        questionGroups.forEach { group ->
             group.registerImages(imageArray)
         }
     }
@@ -44,7 +44,7 @@ class QuestionSection(
         descriptions.forEach { description ->
             if (description.type.isText) stringArray.put(description.content)
         }
-        groups.forEach { group ->
+        questionGroups.forEach { group ->
             group.registerStrings(stringArray)
         }
     }
@@ -52,7 +52,7 @@ class QuestionSection(
     fun toJson(): JSONObject {
         return JSONObject().apply {
             put("number", number)
-            put("name", name)
+            //put("name", name)
             put(
                 "descriptions",
                 JSONArray().apply {
@@ -62,14 +62,14 @@ class QuestionSection(
             put(
                 "groups",
                 JSONArray().apply {
-                    groups.forEach { put(it.toJson()) }
+                    questionGroups.forEach { put(it.toJson()) }
                 }
             )
         }
     }
 
     override fun iterator(): Iterator<QuestionGroup> {
-        return groups.iterator()
+        return questionGroups.iterator()
     }
 
 }

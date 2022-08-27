@@ -1,10 +1,10 @@
 package com.donald.abrsmappserver.exercise
 
-import com.donald.abrsmappserver.generator.groupgenerator.GroupGenerator
-import com.donald.abrsmappserver.generator.groupgenerator.*
 import com.donald.abrsmappserver.generator.sectiongenerator.*
-import com.donald.abrsmappserver.question.QuestionSection
+import com.donald.abrsmappserver.question.Section
+import com.donald.abrsmappserver.question.SectionGroup
 import com.donald.abrsmappserver.utils.*
+import com.donald.abrsmappserver.utils.option.PracticeOptions
 import org.json.JSONObject
 import java.sql.Connection
 import java.util.*
@@ -65,39 +65,36 @@ class ExerciseGenerator(database: Connection) {
         MusicInContextSection(database)
     )
 
-    private val sectionMap = HashMap<String, SectionGenerator>().apply {
+    private val sectionMap = HashMap<String, AbstractSectionGenerator>().apply {
         sectionGenerators.forEach { generator ->
             put(generator.identifier, generator)
         }
     }
 
+    private val random = Random()
+
     fun generateTest(bundle: ResourceBundle): Exercise {
-        val sections = ArrayList<QuestionSection>()
-        var currentGroupNumber = 1
+        val sections = ArrayList<SectionGroup>()
         sectionGenerators.forEachIndexed { index, sectionGenerator ->
-            val section = sectionGenerator.generateSectionTest(index + 1, currentGroupNumber, bundle)
-            currentGroupNumber += sectionGenerator.groupCount
+            val context = Context(bundle)
+            val section = sectionGenerator.generateSectionTest(index + 1, context)
             sections.add(section)
         }
         return Exercise(Exercise.Type.TEST, "Test", Date(), sections)
     }
 
-    fun generatePractice(bundle: ResourceBundle, options: JSONObject): Exercise? {
+    fun generatePractice(bundle: ResourceBundle, options: PracticeOptions): Exercise? {
         // TODO: CHECK AND DEBUG SANITIZE REQUESTS
-        val sectionOptions = options.getJSONArrayOrNull("sections") ?: return null
-        val sections = ArrayList<QuestionSection>(sectionOptions.length())
-        //val groups = ArrayList<QuestionGroup>()
-        var currentStartGroupNumber = 1
+        val sectionOptions = options.sectionOptions
+        val sections = ArrayList<SectionGroup>(sectionOptions.size)
 
-        for (i in 0 until sectionOptions.length()) {
-            val sectionOption = sectionOptions.getJSONObjectOrNull(i) ?: return null
-            val identifier = sectionOption.getStringOrNull("identifier") ?: return null
+        sectionOptions.forEachIndexed { sectionIndex, sectionOption ->
+            val identifier = sectionOption.identifier
             val generator = sectionMap[identifier]?: return null
-            val groupOptions = sectionOption.getJSONArrayOrNull("groups") ?: return null
-            if (groupOptions.length() == 0) return null
+            val groupOptions = sectionOption.questionGroupOptions
+            if (groupOptions.isEmpty()) return null
 
-            sections += generator.generateSectionPractice(i + 1, currentStartGroupNumber, bundle, groupOptions) ?: return null
-            currentStartGroupNumber += groupOptions.length()
+            sections += generator.generateSectionPractice(sectionIndex + 1, Context(bundle), groupOptions) ?: return null
         }
 
         if (sections.size == 0) return null
@@ -106,7 +103,7 @@ class ExerciseGenerator(database: Connection) {
             type = Exercise.Type.PRACTICE,
             title = bundle.getString("exercise_title_practice"),
             date = Date(),
-            sections = sections
+            sectionGroups = sections
         )
     }
 

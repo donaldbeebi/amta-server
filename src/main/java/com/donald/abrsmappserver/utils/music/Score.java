@@ -10,7 +10,7 @@ import java.util.HashMap;
 
 public class Score
 {
-	private final ArrayList<Part> parts;
+	public final ArrayList<Part> parts;
 	private int currentPart;
 	private int currentMeasure;
 	private int currentStaff;

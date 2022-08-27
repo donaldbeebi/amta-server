@@ -1,16 +1,15 @@
 package com.donald.abrsmappserver.question
 
 import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
 
 class TextInputQuestion(
     number: Int,
-    descriptions: List<Description>,
+    descriptions: List<Description> = emptyList(),
     inputHint: String? = null,
     val inputType: InputType,
     val answers: List<Answer>
-) : Question(number, descriptions, inputHint) {
+) : ChildQuestion(number, descriptions, inputHint) {
 
     override val points: Int
         get() = answers.count { it.correct }
@@ -20,7 +19,6 @@ class TextInputQuestion(
         visitor.visit(this)
     }
 
-    @Throws(JSONException::class)
     override fun toPartialJson(): JSONObject {
         val jsonObject = JSONObject()
         jsonObject.put(QUESTION_TYPE, Type.TEXT_INPUT.ordinal)
@@ -37,16 +35,18 @@ class TextInputQuestion(
         Text, Number
     }
 
-    class Answer(var userAnswer: String?, val correctAnswer: String) : Question.Answer {
+    class Answer(var userAnswer: String?, val correctAnswers: List<String>) : ChildQuestion.Answer {
+
+        @Deprecated("Use listOf(correctAnswers) instead")
+        constructor(userAnswer: String?, correctAnswer: String) : this(userAnswer, listOf(correctAnswer))
 
         override val correct: Boolean
-            get() = userAnswer == correctAnswer
+            get() = correctAnswers.any { it == userAnswer }
 
-        @Throws(JSONException::class)
         fun toJson(): JSONObject {
             return JSONObject().apply {
                 put("user_answer", userAnswer ?: JSONObject.NULL)
-                put("correct_answer", correctAnswer)
+                put("correct_answers", correctAnswers)
             }
         }
 

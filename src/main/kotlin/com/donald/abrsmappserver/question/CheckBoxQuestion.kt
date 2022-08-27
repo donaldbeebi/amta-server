@@ -1,14 +1,13 @@
 package com.donald.abrsmappserver.question
 import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
 
 class CheckBoxQuestion(
     number: Int,
-    descriptions: List<Description>,
+    descriptions: List<Description> = emptyList(),
     inputHint: String? = null,
     val answers: List<Answer>
-) : Question(number, descriptions, inputHint) {
+) : ChildQuestion(number, descriptions, inputHint) {
 
     override val points: Int
         get() = answers.count { it.correct }
@@ -29,7 +28,7 @@ class CheckBoxQuestion(
         return jsonObject
     }
 
-    class Answer(var userAnswer: Boolean?, val correctAnswer: Boolean) : Question.Answer {
+    class Answer(var userAnswer: Boolean?, val correctAnswer: Boolean) : ChildQuestion.Answer {
 
         override val correct: Boolean
             get() = userAnswer == correctAnswer

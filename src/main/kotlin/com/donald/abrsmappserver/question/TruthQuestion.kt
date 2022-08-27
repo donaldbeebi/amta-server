@@ -4,10 +4,10 @@ import org.json.JSONObject
 
 class TruthQuestion(
     number: Int,
-    descriptions: List<Description>,
+    descriptions: List<Description> = emptyList(),
     inputHint: String? = null,
     val answer: Answer
-) : Question(number, descriptions, inputHint) {
+) : ChildQuestion(number, descriptions, inputHint) {
 
     override val points: Int
         get() = if (answer.correct) 1 else 0
@@ -24,7 +24,7 @@ class TruthQuestion(
         }
     }
 
-    class Answer(var userAnswer: Boolean?, val correctAnswer: Boolean) : Question.Answer {
+    class Answer(var userAnswer: Boolean?, val correctAnswer: Boolean) : ChildQuestion.Answer {
 
         override val correct: Boolean
             get() {

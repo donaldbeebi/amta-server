@@ -1,103 +1,106 @@
 package com.donald.abrsmappserver.generator.groupgenerator
 
 import com.donald.abrsmappserver.exercise.Context
+import com.donald.abrsmappserver.generator.groupgenerator.abstractgroupgenerator.GroupGenerator
+import com.donald.abrsmappserver.generator.groupgenerator.abstractgroupgenerator.newIndex
 import com.donald.abrsmappserver.question.QuestionGroup
 import com.donald.abrsmappserver.question.MultipleChoiceQuestion
 import com.donald.abrsmappserver.utils.music.Clef
 import com.donald.abrsmappserver.utils.music.Key
-import com.donald.abrsmappserver.utils.music.Mode
-import com.donald.abrsmappserver.utils.RandomIntegerGenerator.RandomIntegerGeneratorBuilder
 import com.donald.abrsmappserver.question.Description
+import com.donald.abrsmappserver.question.ParentQuestion
+import com.donald.abrsmappserver.utils.RandomIntegerGenerator.multirandom.Random1
+import com.donald.abrsmappserver.utils.RandomIntegerGenerator.multirandom.Random3
+import com.donald.abrsmappserver.utils.music.Mode
 import java.sql.Connection
 
-class KeySignature(database: Connection) : GroupGenerator("key_signature", database) {
+private const val PARENT_QUESTION_COUNT = 2
+private const val CHILD_QUESTION_COUNT = 1
+private const val OPTION_COUNT = 4
+private val SHARP_LIST = listOf(true, false)
+private val MAJOR_MINOR = listOf(true, false)
+private val ACC_COUNTS = listOf(3, 4, 5, 6)
+private val WRONG_ACC_COUNTS = listOf(1, 2)
 
-    private val randomForClefs = RandomIntegerGeneratorBuilder.generator()
-        .withLowerBound(0)
-        .withUpperBound(Clef.Type.values().size - 1)
-        .build()
+class KeySignature(database: Connection) : GroupGenerator(
+    "key_signature",
+    PARENT_QUESTION_COUNT,
+    database
+) {
 
-    // for choosing key signature based on number of accidentals
-    private val randomForAccidentals = RandomIntegerGeneratorBuilder.generator()
-        .withLowerBound(-6)
-        .withUpperBound(5)
-        .excludingIf { n: Int -> n >= -2 && n <= 2 }
-        .build()
+    override fun generateGroup(groupNumber: Int, parentQuestionCount: Int, context: Context): QuestionGroup {
+        val sharpRandom = Random1(SHARP_LIST, autoReset = true)
+        val majorRandom = Random1(MAJOR_MINOR, autoReset = true)
+        val variationRandom = Random3(
+            Clef.Type.types,
+            ACC_COUNTS,
+            WRONG_ACC_COUNTS,
+            autoReset = true
+        )
 
-    private val randomForMajorMinor = RandomIntegerGeneratorBuilder.generator()
-        .withLowerBound(0)
-        .withUpperBound(1)
-        .build()
+        val parentQuestions = List(parentQuestionCount) { parentIndex ->
+            val (correctClefType, accCount, wrongAccCount) = variationRandom.generateAndExclude()
+            //val correctClefIndex = clefRandom.generateAndExclude()
+            //val correctClef = Clef.Type.values()[correctClefIndex]
+            val isSharp = sharpRandom.generateAndExclude()
+            val isMajor = majorRandom.generateAndExclude()
 
-    private val randomForWrongNumberOfAccidentals = RandomIntegerGeneratorBuilder.generator()
-        .withLowerBound(1)
-        .withUpperBound(2)
-        .build()
-
-    override fun generateGroup(groupNumber: Int, context: Context): QuestionGroup {
-
-        val questions = List(NO_OF_QUESTIONS) { index ->
-            val correctClefIndex = randomForClefs.nextInt()
-            val correctClef = Clef.Type.values()[correctClefIndex]
-            randomForClefs.exclude(correctClefIndex)
-            val correctAccidentals = randomForAccidentals.nextInt()
-            if (correctAccidentals > 0) randomForAccidentals.excludeIf { n: Int -> n > 0 } else randomForAccidentals.excludeIf { n: Int -> n < 0 }
-            val key: Key
-            val generatesMajor = randomForMajorMinor.nextInt()
-            randomForMajorMinor.exclude(generatesMajor)
-            key = if (generatesMajor == 1) Key(correctAccidentals, Mode.MAJOR) else Key(correctAccidentals, Mode.N_MINOR)
-            var numberOfAccidentals = correctAccidentals
-            val accidentalSymbol: Char
-            if (numberOfAccidentals > 0) {
-                accidentalSymbol = 's'
-            } else {
-                accidentalSymbol = 'b'
-                numberOfAccidentals = -numberOfAccidentals
+            val options: List<String>
+            val answer: Int
+            run {
+                val shuffleResult = generateOptions(
+                    correctClefType,
+                    accCount,
+                    wrongAccCount,
+                    if (isSharp) 's' else 'b'
+                ).shuffled()
+                options = shuffleResult.shuffled
+                answer = shuffleResult.newIndex(correctClefType.ordinal)
             }
 
-            val options = List(NO_OF_OPTIONS) { i ->
-                if (i == 0) {
-                    "g_key_signature_" + correctClef.string() + "_" + accidentalSymbol + numberOfAccidentals
-                }
-                else {
-                    var wrongClefIndex = i - 1
-                    if (wrongClefIndex >= correctClefIndex) wrongClefIndex += 1
-                    val wrongClef = Clef.Type.values()[wrongClefIndex]
-                    val numberOfWrongAccidentals = randomForWrongNumberOfAccidentals.nextInt()
-                    "g_key_signature_" + wrongClef.string() + "_" + accidentalSymbol + numberOfAccidentals + "w" + numberOfWrongAccidentals
-                }
+            val key: Key = run {
+                val mode = if (isMajor) Mode.Major else Mode.NatMinor
+                val fifths = if (isSharp) accCount else -accCount
+                Key(fifths, mode)
             }
-            val dispositions = options.shuffle()
-            randomForClefs.clearAllExcludedIntegers()
 
-            MultipleChoiceQuestion(
-                number = index + 1,
+            val childQuestions = List(CHILD_QUESTION_COUNT) { childIndex ->
+                MultipleChoiceQuestion(
+                    number = childIndex + 1,
+                    optionType = MultipleChoiceQuestion.OptionType.Image,
+                    options = options,
+                    answer = MultipleChoiceQuestion.Answer(null, answer)
+                )
+            }
+
+            ParentQuestion(
+                number = parentIndex + 1,
                 descriptions = listOf(
                     Description(
                         Description.Type.Text,
                         context.getString("key_signature_question_desc", key.string(context.bundle))
                     )
                 ),
-                optionType = MultipleChoiceQuestion.OptionType.Image,
-                options = options,
-                answer = MultipleChoiceQuestion.Answer(null, dispositions[0])
+                childQuestions = childQuestions
             )
         }
-
-        randomForAccidentals.clearAllExcludedIntegers()
-        randomForMajorMinor.clearAllExcludedIntegers()
 
         return QuestionGroup(
             name = getGroupName(context.bundle),
             number = groupNumber,
-            questions = questions,
-            descriptions = emptyList()
+            parentQuestions = parentQuestions
         )
     }
 
-    companion object {
-        private const val NO_OF_QUESTIONS = 2
-        private const val NO_OF_OPTIONS = 4
+    private fun generateOptions(correctClefType: Clef.Type, accCount: Int, wrongAccCount: Int, accidentalSymbol: Char): List<String> {
+        return List(OPTION_COUNT) { i ->
+            val currentClefType = Clef.Type.types[i]
+            if (currentClefType == correctClefType) {
+                "g_key_signature_" + correctClefType.string() + "_" + accidentalSymbol + accCount
+            } else {
+                "g_key_signature_" + currentClefType.string() + "_" + accidentalSymbol + accCount + "w" + wrongAccCount
+            }
+        }
     }
 
 }

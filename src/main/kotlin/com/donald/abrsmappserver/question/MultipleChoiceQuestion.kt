@@ -5,12 +5,12 @@ import org.json.JSONObject
 
 class MultipleChoiceQuestion(
     number: Int,
-    descriptions: List<Description>,
+    descriptions: List<Description> = emptyList(),
     inputHint: String? = null,
     val options: List<String>,
     val optionType: OptionType,
     val answer: Answer
-) : Question(number, descriptions, inputHint) {
+) : ChildQuestion(number, descriptions, inputHint) {
 
     override val points: Int
         get() = if (answer.correct) 1 else 0
@@ -44,7 +44,7 @@ class MultipleChoiceQuestion(
         Text, Image, Score
     }
 
-    class Answer(var userAnswer: Int?, val correctAnswers: List<Int>) : Question.Answer {
+    class Answer(var userAnswer: Int?, val correctAnswers: List<Int>) : ChildQuestion.Answer {
 
         constructor(userAnswer: Int?, correctAnswer: Int) : this(userAnswer, listOf(correctAnswer))
 

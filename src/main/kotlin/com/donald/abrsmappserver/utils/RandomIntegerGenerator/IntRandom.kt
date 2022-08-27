@@ -59,6 +59,13 @@ class Constraint private constructor(
             ints.forEach { excludedInts.add(it) }
             return this
         }
+        fun excluding(range: IntRange): Builder {
+            require(this::range.isInitialized) { "Range has not been set!" }
+            require(range.first in this.range && range.last in this.range)
+            require(range.step == 1)
+            range.forEach { excludedInts.add(it) }
+            return this
+        }
         fun excludingIf(predicate: (Int) -> Boolean): Builder {
             require(this::range.isInitialized) { "Range has not been set!" }
             range.forEach { int ->
@@ -74,18 +81,20 @@ class Constraint private constructor(
     }
 }
 
-fun buildConstraint(block: Constraint.Builder.() -> Unit): Constraint {
+inline fun buildConstraint(block: Constraint.Builder.() -> Unit): Constraint {
     val builder = Constraint.Builder()
     builder.block()
     return builder.build()
 }
 
-sealed class RandomInt(constraint: Constraint) {
+sealed class IntRandom(constraint: Constraint) {
     private val random = Random()
     protected val range = constraint.range
     protected abstract val excludedInts: Set<Int>
     val possibleIntCount: Int
         get() = (range.span + 1) - excludedInts.size
+    val hasNext: Boolean
+        get() = possibleIntCount > 0
 
     open fun generate(): Int {
         require(possibleIntCount > 0) { "All of the possible integers have been excluded!" }
@@ -121,11 +130,11 @@ sealed class RandomInt(constraint: Constraint) {
     }
 }
 
-class StaticRandomInt(constraint: Constraint) : RandomInt(constraint) {
+class StaticIntRandom(constraint: Constraint) : IntRandom(constraint) {
     override val excludedInts = constraint.excludedInts
 }
 
-class DynamicRandomInt(constraint: Constraint, val autoReset: Boolean) : RandomInt(constraint) {
+class DynamicIntRandom(constraint: Constraint, val autoReset: Boolean) : IntRandom(constraint) {
     // TODO: PERHAPS COMBINE THESE? SINCE RESET IS NO LONGER USED
     private val hardExcludedInts = constraint.excludedInts
     override val excludedInts = TreeSet(constraint.excludedInts)
@@ -154,6 +163,11 @@ class DynamicRandomInt(constraint: Constraint, val autoReset: Boolean) : RandomI
         ints.forEach { excludedInts.add(it) }
     }
 
+    fun excluding(range: IntRange) {
+        require(range.first in this.range && range.last in this.range)
+        range.forEach { excludedInts.add(it) }
+    }
+
     fun excludeIf(predicate: (Int) -> Boolean) {
         hardExcludedInts.forEach { int ->
             val excluded = predicate(int)
@@ -172,9 +186,9 @@ class DynamicRandomInt(constraint: Constraint, val autoReset: Boolean) : RandomI
 @Deprecated("Use instantiation")
 inline fun <R> using(
     constraint: Constraint,
-    block: (DynamicRandomInt) -> R
+    block: (DynamicIntRandom) -> R
 ): R {
-    val randomInt = DynamicRandomInt(constraint)
+    val randomInt = DynamicIntRandom(constraint)
     return block(randomInt)
 }
 
@@ -182,10 +196,10 @@ inline fun <R> using(
 inline fun <R> using(
     constraint1: Constraint,
     constraint2: Constraint,
-    block: (DynamicRandomInt, DynamicRandomInt) -> R
+    block: (DynamicIntRandom, DynamicIntRandom) -> R
 ): R {
-    val randomInt1 = DynamicRandomInt(constraint1)
-    val randomInt2 = DynamicRandomInt(constraint2)
+    val randomInt1 = DynamicIntRandom(constraint1)
+    val randomInt2 = DynamicIntRandom(constraint2)
     return block(randomInt1, randomInt2)
 }
 
@@ -194,11 +208,11 @@ inline fun <R> using(
     constraint1: Constraint,
     constraint2: Constraint,
     constraint3: Constraint,
-    block: (DynamicRandomInt, DynamicRandomInt, DynamicRandomInt) -> R
+    block: (DynamicIntRandom, DynamicIntRandom, DynamicIntRandom) -> R
 ): R {
-    val randomInt1 = DynamicRandomInt(constraint1)
-    val randomInt2 = DynamicRandomInt(constraint2)
-    val randomInt3 = DynamicRandomInt(constraint3)
+    val randomInt1 = DynamicIntRandom(constraint1)
+    val randomInt2 = DynamicIntRandom(constraint2)
+    val randomInt3 = DynamicIntRandom(constraint3)
     return block(randomInt1, randomInt2, randomInt3)
 }
 
@@ -208,12 +222,12 @@ inline fun <R> using(
     constraint2: Constraint,
     constraint3: Constraint,
     constraint4: Constraint,
-    block: (DynamicRandomInt, DynamicRandomInt, DynamicRandomInt, DynamicRandomInt) -> R
+    block: (DynamicIntRandom, DynamicIntRandom, DynamicIntRandom, DynamicIntRandom) -> R
 ): R {
-    val randomInt1 = DynamicRandomInt(constraint1)
-    val randomInt2 = DynamicRandomInt(constraint2)
-    val randomInt3 = DynamicRandomInt(constraint3)
-    val randomInt4 = DynamicRandomInt(constraint4)
+    val randomInt1 = DynamicIntRandom(constraint1)
+    val randomInt2 = DynamicIntRandom(constraint2)
+    val randomInt3 = DynamicIntRandom(constraint3)
+    val randomInt4 = DynamicIntRandom(constraint4)
     return block(randomInt1, randomInt2, randomInt3, randomInt4)
 }
 

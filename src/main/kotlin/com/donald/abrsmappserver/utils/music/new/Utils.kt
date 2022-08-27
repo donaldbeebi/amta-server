@@ -1,7 +1,9 @@
 package com.donald.abrsmappserver.utils.music.new
 
+import com.donald.abrsmappserver.utils.music.Music
 import java.lang.Math.floorMod
 import kotlin.math.abs
+import com.donald.abrsmappserver.utils.music.Letter as OldLetter
 
 typealias Alter = Int
 typealias Octave = Int
@@ -18,7 +20,7 @@ const val PITCH_TABLE_COLUMN_COUNT = 7
 const val PITCH_TABLE_ROW_COUNT = 5
 
 val PITCH_FIFTHS_VALUE_RANGE = 0..35
-val ALTER_RANGE = -2..2
+val AlterRange = -2..2
 val INTERVAL_FIFTHS_RANGE = -12..12
 
 val EXCLUDED_INTERVALS = hashSetOf(
@@ -34,7 +36,7 @@ val EXCLUDED_INTERVALS = hashSetOf(
 val com.donald.abrsmappserver.utils.music.Interval.isTested: Boolean
     get() = this !in EXCLUDED_INTERVALS
 
-val IntRange.size: Int
+val IntRange.span: Int
     get() = last - first
 
 fun PitchFifthsValue.asPitchFifthsValueToLetter(): Letter {
@@ -44,19 +46,25 @@ fun PitchFifthsValue.asPitchFifthsValueToLetter(): Letter {
 
 fun PitchFifthsValue.asPitchFifthsValueToAlter(): Alter {
     if (isInvalidPitchFifthsValue) throwInvalidPitchFifthsValue()
-    return (floorMod(this, PITCH_FIFTHS_VALUE_RANGE.size) / Letter.cardinality) - (ALTER_RANGE.size / 2)
+    return (floorMod(this, PITCH_FIFTHS_VALUE_RANGE.span) / Letter.cardinality) - (AlterRange.span / 2)
 }
 
 fun PitchFifthsValue.asPitchFifthsValueToOrdinal(octave: Int = 0): Ordinal {
     if (isInvalidPitchFifthsValue) throwInvalidPitchFifthsValue()
-    return this.asPitchFifthsValueToLetter().step * ALTER_RANGE.size +
-            this.asPitchFifthsValueToAlter() + ALTER_RANGE.size / 2 +
-            octave * PITCH_FIFTHS_VALUE_RANGE.size
+    return this.asPitchFifthsValueToLetter().step * AlterRange.span +
+            this.asPitchFifthsValueToAlter() + AlterRange.span / 2 +
+            octave * PITCH_FIFTHS_VALUE_RANGE.span
 }
 
 fun pitchFifthsValue(letter: Letter, alterValue: Int): Int {
     if (alterValue.isInvalidAlterValue) throwInvalidAlterValue()
-    return letter.fifths + (alterValue + ALTER_RANGE.size / 2) * PITCH_TABLE_COLUMN_COUNT
+    return letter.fifths + (alterValue + AlterRange.span / 2) * PITCH_TABLE_COLUMN_COUNT
+}
+
+// TODO: FOR OLD CODE ONLY
+fun pitchFifthsValue(letter: OldLetter, keyStartPitchFifthsValue: Int): Int {
+    if (keyStartPitchFifthsValue.isInvalidPitchFifthsValue) throwInvalidPitchFifthsValue()
+    return floorMod(letter.ordinal - keyStartPitchFifthsValue, OldLetter.NO_OF_LETTERS) + keyStartPitchFifthsValue
 }
 
 fun intervalNumber(fifths: IntervalFifths, octaves: Int): IntervalNumber {
@@ -65,12 +73,19 @@ fun intervalNumber(fifths: IntervalFifths, octaves: Int): IntervalNumber {
 
 fun intervalQuality(fifths: Int): Interval.Quality {
     val simpleNumber = intervalNumber(fifths, 0)
-    val qualityIndex = (fifths + INTERVAL_FIFTHS_RANGE.size / 2) / 7
+    val qualityIndex = (fifths + INTERVAL_FIFTHS_RANGE.span / 2) / 7
     return when (simpleNumber) {
         2, 3, 6, 7 -> Interval.Quality.imperfQualities[qualityIndex]
         1, 4, 5 -> Interval.Quality.perfQualities[qualityIndex]
         else -> throw IllegalStateException("Illegal number $simpleNumber")
     }
+}
+
+fun relPitchOrdinalRange(staffRange: IntRange): IntRange {
+    require(staffRange.first < staffRange.last)
+    val lowest = Music.pitchOrdinalFromAbsStep(staffRange.first, -AlterRange.span / 2)
+    val highest = Music.pitchOrdinalFromAbsStep(staffRange.last, AlterRange.span / 2)
+    return lowest..highest
 }
 
 /*
@@ -84,10 +99,10 @@ val Int.isInvalidPitchFifthsValue: Boolean
     get() = this !in PITCH_FIFTHS_VALUE_RANGE
 
 val Int.isValidAlterValue: Boolean
-    get() = this in ALTER_RANGE
+    get() = this in AlterRange
 
 val Int.isInvalidAlterValue: Boolean
-    get() = this !in ALTER_RANGE
+    get() = this !in AlterRange
 
 fun Int.asAlterToSymbol(): String {
     if (this.isInvalidAlterValue) throwInvalidAlterValue()

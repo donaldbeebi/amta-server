@@ -93,13 +93,13 @@ public class Key
 
     public RelativePitch startPitch()
     {
-        return new RelativePitch(this.id / Mode.NO_OF_MODES);
+        return new RelativePitch(this.id / Mode.modes.size());
     }
 
     public RelativePitch tonicPitch()
     {
         int offset;
-        if(mode() == Mode.MAJOR) offset = MAJOR_FIRST_NOTE_OFFSET;
+        if(mode() == Mode.Major) offset = MAJOR_FIRST_NOTE_OFFSET;
         else offset = MINOR_FIRST_NOTE_OFFSET;
         return new RelativePitch(this.id / Mode.NO_OF_MODES + offset);
     }
@@ -130,21 +130,21 @@ public class Key
     public Key relativeKey()
     {
         Key clone = new Key(this);
-        if(mode() == Mode.MAJOR) clone.changeMode(Mode.N_MINOR);
-        else clone.changeMode(Mode.MAJOR);
+        if(mode() == Mode.Major) clone.changeMode(Mode.NatMinor);
+        else clone.changeMode(Mode.Major);
         return clone;
     }
 
     public Key parallelKey()
     {
         // translating a scale by a major 6
-        int factor = mode() == Mode.MAJOR ? -1 : 1;
+        int factor = mode() == Mode.Major ? -1 : 1;
         int cloneID = translatedID(this.id, Interval.MAJ_6, factor);
         Key clone = null;
         if(isValidID(cloneID))
         {
             clone = new Key(cloneID);
-            clone.changeMode(mode() == Mode.MAJOR ? Mode.N_MINOR : Mode.MAJOR);
+            clone.changeMode(mode() == Mode.Major ? Mode.NatMinor : Mode.Major);
         }
         else
         {
@@ -173,26 +173,23 @@ public class Key
         int offset;
 
         // conditionals
-        switch (mode())
+        switch(mode())
         {
-            case H_MINOR: {
-                if (n % Consts.PITCHES_PER_SCALE == 6) sharpen = true;
+            case HarMinor:
+                if(n % Consts.PITCHES_PER_SCALE == 6) sharpen = true;
                 offset = MINOR_FIRST_NOTE_OFFSET;
                 break;
-            }
-            case N_MINOR: {
+            case NatMinor:
                 offset = MINOR_FIRST_NOTE_OFFSET;
                 break;
-            }
-            case M_MINOR: {
-                if (n % Consts.PITCHES_PER_SCALE == 5 || n % Consts.PITCHES_PER_SCALE == 6) sharpen = true;
+            case MelMinor:
+                if(n % Consts.PITCHES_PER_SCALE == 5 || n % Consts.PITCHES_PER_SCALE == 6)
+                    sharpen = true;
                 offset = MINOR_FIRST_NOTE_OFFSET;
                 break;
-            }
-            default: {
+            default:
                 offset = MAJOR_FIRST_NOTE_OFFSET;
                 break;
-            }
         }
 
         // TODO: USE DIATONIC NOTE
@@ -221,11 +218,11 @@ public class Key
     public static int idFromTonicNote(int tonicNoteID, Mode mode)
     {
         int translation;
-        if(mode == Mode.MAJOR) translation = -MAJOR_FIRST_NOTE_OFFSET;
+        if(mode == Mode.Major) translation = -MAJOR_FIRST_NOTE_OFFSET;
         else translation = -MINOR_FIRST_NOTE_OFFSET;
         int startingNoteID = tonicNoteID;
         startingNoteID += translation;
-        return startingNoteID * Mode.NO_OF_MODES + mode.ordinal();
+        return startingNoteID * Mode.modes.size() + mode.ordinal();
     }
 
     public static int idFromFifths(int accidentals, Mode mode)
@@ -333,7 +330,7 @@ public class Key
     {
         int offset;
         Mode mode = Mode.values()[floorMod(keyId, Mode.NO_OF_MODES)];
-        if(mode == Mode.MAJOR) offset = MAJOR_FIRST_NOTE_OFFSET;
+        if(mode == Mode.Major) offset = MAJOR_FIRST_NOTE_OFFSET;
         else offset = MINOR_FIRST_NOTE_OFFSET;
         return keyId / Mode.NO_OF_MODES + offset;
     }
@@ -348,14 +345,14 @@ public class Key
         Element key = attributes.addElement("key");
         key.addElement("fifths")
             .addText(String.valueOf(startNoteID(this.id) - Music.NAT_SCALE_START_NOTE));
-        key.addElement("mode").addText(mode() == Mode.MAJOR ? Mode.MAJOR.string() : Mode.N_MINOR.string());
+        key.addElement("mode").addText(mode() == Mode.Major ? Mode.Major.string() : Mode.NatMinor.string());
     }
 
     public JSONObject toJson()
     {
         JSONObject object = new JSONObject();
         object.put("fifths", fifths());
-        object.put("mode", mode() == Mode.MAJOR ? Mode.MAJOR.string() : Mode.N_MINOR.string());
+        object.put("mode", mode() == Mode.Major ? Mode.Major.string() : Mode.NatMinor.string());
         return object;
     }
 }

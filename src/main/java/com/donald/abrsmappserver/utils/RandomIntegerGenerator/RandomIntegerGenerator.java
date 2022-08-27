@@ -1,5 +1,6 @@
 package com.donald.abrsmappserver.utils.RandomIntegerGenerator;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.TreeSet;
@@ -7,7 +8,7 @@ import java.util.TreeSet;
 // TODO: SEPARATE RANDOM FROM CONSTRAINTS
 // TODO: ALLOW CONSTRAINTS TO BE CHANGED
 
-public class RandomIntegerGenerator
+public class RandomIntegerGenerator implements Closeable
 {
     public interface IntegerExcluder { boolean excludes(int value); }
 
@@ -172,5 +173,10 @@ public class RandomIntegerGenerator
             currentInteger++;
         }
         return integers;
+    }
+
+    @Override
+    public void close() {
+        clearAllExcludedIntegers();
     }
 }

@@ -3,7 +3,7 @@ package com.donald.abrsmappserver.question
 import org.json.JSONArray
 import org.json.JSONObject
 
-class Group(
+class QuestionGroup(
     val number: Int,
     val name: String,
     val descriptions: List<Description> = emptyList(),

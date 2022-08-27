@@ -5,8 +5,7 @@ import org.json.JSONObject
 
 class Description(val type: Type, val content: String) {
     override fun toString(): String {
-        return "Type: " + type + " " +
-                "Content: " + content
+        return "Type: $type|Content: $content"
     }
 
     constructor(type: Int, content: String): this(Type.values()[type], content)
@@ -26,7 +25,7 @@ class Description(val type: Type, val content: String) {
 
         companion object {
             val types = values().toList()
-            fun fromString(string: String): Description.Type {
+            fun fromString(string: String): Type {
                 types.forEach { if (it.string == string) return it }
                 throw IllegalArgumentException("No type found for $string")
             }
