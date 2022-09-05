@@ -5,3 +5,5 @@
 images/
 google-application-credentials.json
 server.keystore
+secret.json
+gcf/
