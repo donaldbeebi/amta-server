@@ -274,15 +274,15 @@ object Server : AppLoader {
 
         val exercise = when (mode) {
             "test" -> {
-                tryDeductPoints(uid, DEBUG_TEST_POINT_COST) otherwise { badResponse -> return badResponse }
+                //tryDeductPoints(uid, DEBUG_TEST_POINT_COST) otherwise { badResponse -> return badResponse }
                 generator.generateTest(bundle)
             }
             "practice" -> {
                 val options = body.tryGetPracticeOptions("options")
                     .otherwise { it.printStackTrace(); return responseBadOptions() }
                     ?: return responseBadOptions()
-                val cost = options.countCost(costPerQuestion = DEBUG_PRACTICE_POINT_COST)
-                tryDeductPoints(uid, cost) otherwise { badResponse -> return badResponse }
+                //val cost = options.countCost(costPerQuestion = DEBUG_PRACTICE_POINT_COST)
+                //tryDeductPoints(uid, cost) otherwise { badResponse -> return badResponse }
                 generator.generatePractice(bundle, options) ?: return responseBadOptions()
             }
             else -> {
