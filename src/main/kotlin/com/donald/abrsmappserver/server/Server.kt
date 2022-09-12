@@ -295,30 +295,13 @@ object Server : AppLoader {
             .body(exercise.toJson().toString())
     }
 
-    /*private val debug_getExercise = fun(request: Request): Response {
-        val body = parseJsonObject(request.bodyString()) ?: return responseBadJson()
-
-        val langPrefString = body.getStringOrNull("lang_pref") ?: return responseNoLangPref()
-        val langPref = LangPref.fromStringOrNull(langPrefString) ?: return responseBadLangPref()
-        val bundle = ResourceBundle.getBundle("resources.strings", Locale(langPref.string))
-
-        val exercise = when (body.getStringOrNull("mode")) {
-            "test" -> {
-                generator.generateTest(bundle)
-            }
-            "practice" -> {
-                val options = body.getJSONObjectOrNull("options") ?: return responseNoOptions()
-                generator.generatePractice(bundle, options) ?: return responseBadOptions()
-            }
-            else -> {
-                return responseBadExerciseMode()
-            }
-        }
-
+    private val debug_getTest = fun(_: Request): Response {
+        val bundle = ResourceBundle.getBundle("resources.strings", Locale(Profile.LangPref.English.code))
+        val exercise = generator.generateTest(bundle)
         return Response(OK)
             .header("Content-Type", JSON_CONTENT_TYPE_HEADER_VALUE)
             .body(exercise.toJson().toString())
-    }*/
+    }
 
 
 
@@ -386,7 +369,7 @@ object Server : AppLoader {
 
         "/exercise"     bind GET    to getExercise,
         "/exercise"     bind POST   to getExercise, // TODO: WEIRD
-        //"/debug_exercise" bind GET to debug_getExercise,
+        "/debug_test"   bind GET      to debug_getTest,
 
         "/images/{img}" bind GET    to getImage,
         "/debug_images/{img}" bind GET to debug_getImage,
